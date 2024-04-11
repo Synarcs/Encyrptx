@@ -50,7 +50,7 @@ type EncryptUtil struct {
 	// synmmetric cipher chaining mode
 	block_cipher_mode string // different block modes aes-cbc, aes-cfb,
 	encryptedContent  []byte
-	iv                []byte
+	initialize_vector []byte
 	masterKeySalt     []byte
 
 	// plain text conten
@@ -233,6 +233,7 @@ func (enc *EncryptUtil) aesEncrypt() {
 	utils.DebugEncodedKey(ciphertext)
 
 	// store the message storage block
+	enc.initialize_vector = iv
 	enc.encryptedContent = ciphertext
 }
 
@@ -249,7 +250,7 @@ func (enc *EncryptUtil) generateHmacOverEncryption() {
 		panic("Error the algorithm for key sign not supported")
 	}
 
-	message_integrity_content := append(enc.iv, enc.encryptedContent...)
+	message_integrity_content := append(enc.initialize_vector, enc.encryptedContent...)
 
 	hmac_hash.Write(message_integrity_content)
 
@@ -276,7 +277,8 @@ func (enc *EncryptUtil) writeEncyptedtoBinary(ciphertext []byte) {
 			Symmetric_encryption_algorithm: enc.inputArgs.Symmetric_encryption_algorithm,
 			Pbkdf2_iteration_count:         enc.inputArgs.Pbkdf2_iteration_count,
 			Encrypt_util_version:           enc.inputArgs.Version,
-			Hashing_Salt: 					enc.masterKeySalt,
+			Hashing_Salt:                   enc.masterKeySalt,
+			Encrypt_IV_CBC:                 enc.initialize_vector,
 		}
 
 		binaryStruct := utils.BinaryStruct{

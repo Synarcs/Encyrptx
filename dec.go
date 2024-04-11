@@ -18,8 +18,6 @@ import (
 type DecryptUtil struct {
 	binaryBufferRead utils.BinaryStruct
 
-	ciphertext []byte
-
 	// all the keys derived
 	hmac_key       []byte
 	encryption_key []byte
@@ -138,49 +136,50 @@ func (dec *DecryptUtil) validateHmac() bool {
 		panic("Error the algorithm for key sign not supported")
 	}
 
-	message_integrity_content_check := dec.binaryBufferRead.Ciphertext
+	message_integrity_content_check := append(dec.binaryBufferRead.Metadata.Encrypt_IV_CBC, dec.binaryBufferRead.Ciphertext...)
 
 	hmac_hash.Write(message_integrity_content_check)
 	message_integrity_mac := hmac_hash.Sum(nil)
 
+	fmt.Println(message_integrity_mac, dec.binaryBufferRead.Hmac)
 	return hmac.Equal(message_integrity_mac, dec.binaryBufferRead.Hmac)
 }
 
-func (enc *EncryptUtil) aesDecrypt() {
-	var iv []byte = enc.genRandBytes(aes.BlockSize)
+func pkcs7Unpad(data []byte) ([]byte, error) {
+	if len(data) == 0 {
+		return nil, fmt.Errorf("input data is empty")
+	}
+	padding := int(data[len(data)-1])
+	if padding == 0 || padding > len(data) {
+		return nil, fmt.Errorf("invalid padding")
+	}
+	for i := len(data) - padding; i < len(data); i++ {
+		if data[i] != byte(padding) {
+			return nil, fmt.Errorf("invalid padding bytes")
+		}
+	}
+	return data[:len(data)-padding], nil
+}
 
-	input_file_name := enc.inputArgs.Plain_text_file_name
-
-	enc.readFileAndEncryptFlush(input_file_name)
-
-	// go main crypto uses pkcs7 padding for aes all modes
-	if debug {
-		fmt.Println("aes block size is ", aes.BlockSize)
+func (dec *DecryptUtil) aesDecrypt() {
+	if len(dec.binaryBufferRead.Ciphertext) < aes.BlockSize {
+		panic("Error the encrypted content is too small for aes to decrypt")
 	}
 
-	block, err := aes.NewCipher(enc.encryption_key)
+	block, err := aes.NewCipher(dec.encryption_key)
 	if err != nil {
 		panic(err)
 	}
 
-	var sample_plain_padding []byte
-	sample_plain_padding = PKCSPadding(enc.readBuffer, block)
+	mode := cipher.NewCBCDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV_CBC) // gcm has the base main mode for nounce
+	plaintext := make([]byte, len(dec.binaryBufferRead.Ciphertext))
 
-	// fmt.Println("The padded text is ", sample_plain_padding)
-	// the input to the aes is done via (iv size) + (len(pkcs7 padded plain text the block aes cipher in CBC mode))
-	ciphertext := make([]byte, aes.BlockSize+len(sample_plain_padding))
+	mode.CryptBlocks(plaintext, dec.binaryBufferRead.Ciphertext)
 
-	cbc := cipher.NewCBCEncrypter(block, iv)
-	cbc.CryptBlocks(ciphertext[aes.BlockSize:], sample_plain_padding)
-
-	fmt.Println("AES: CBC Mode")
-	utils.DebugEncodedKey(ciphertext)
-
-	// store the message storage block
-	enc.encryptedContent = ciphertext
+	buffer, err := pkcs7Unpad(plaintext)
+	if err != nil { panic(err) }
+	fmt.Println(string(buffer))
 }
-
-
 
 func main() {
 	var decryptUtil *DecryptUtil = &DecryptUtil{}
@@ -194,4 +193,5 @@ func main() {
 		panic(err)
 	}
 
+	decryptUtil.aesDecrypt()
 }
