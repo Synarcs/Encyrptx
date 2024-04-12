@@ -49,11 +49,9 @@ func (dec *DecryptUtil) getKeySize() int {
 	}
 }
 
-var encrpt_file_name string = "input.enc"
-
 const debug bool = false
 
-func (dec *DecryptUtil) readBinary() {
+func (dec *DecryptUtil) readBinary(encrpt_file_name string) {
 	ff, err := os.Open(encrpt_file_name)
 	if err != nil {
 		panic(err)
@@ -240,7 +238,10 @@ func (dec *DecryptUtil) aesDecrypt() {
 func main() {
 	var decryptUtil *DecryptUtil = &DecryptUtil{}
 
-	decryptUtil.readBinary()
+	encrpt_file_name := utils.GetInputFileName()
+
+	encrpt_file_name = encrpt_file_name + ".enc"
+	decryptUtil.readBinary(encrpt_file_name)
 	decryptUtil.deriveMasterKey()
 	decryptUtil.deriveHmacEncKeys()
 

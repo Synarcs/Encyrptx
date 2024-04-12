@@ -61,7 +61,7 @@ type EncryptUtil struct {
 const debug bool = false
 
 // read the conf file for the input.yaml to the encrypt tool
-func (conf *EncryptUtilInputArgs) readConfFile() *EncryptUtilInputArgs {
+func (conf *EncryptUtilInputArgs) readConfFile(fileName string) *EncryptUtilInputArgs {
 	inputFile, err := os.ReadFile("input.yaml")
 	if err != nil {
 		panic("Error the Encrypt tool requires the yaml config file Please create a [input.yaml file]")
@@ -231,7 +231,7 @@ func (enc *EncryptUtil) aesEncrypt() {
 	if strings.Contains(enc.inputArgs.Symmetric_encryption_algorithm, "gcm") {
 		aesGcm, err := cipher.NewGCM(block)
 		nonce := enc.genRandBytes(aesGcm.NonceSize())
-		
+
 		if err != nil {
 			panic(err)
 		}
@@ -351,10 +351,13 @@ func main() {
 	var encrypt_util *EncryptUtil = &EncryptUtil{}
 	var encrypt_util_input *EncryptUtilInputArgs = &EncryptUtilInputArgs{}
 
-	encrypt_util_input = encrypt_util_input.readConfFile()
+	fileName := utils.GetInputFileName()
+
+	encrypt_util_input = encrypt_util_input.readConfFile(fileName)
 	fmt.Println(*encrypt_util_input)
 
 	encrypt_util.inputArgs = encrypt_util_input
+	encrypt_util.inputArgs.Plain_text_file_name = fileName
 	encrypt_util.generateMasterKey()
 	encrypt_util.deriveHmacEncKeys()
 

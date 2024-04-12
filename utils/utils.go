@@ -15,7 +15,7 @@ type Metadata struct {
 	Pbkdf2_iteration_count         int
 	Encrypt_util_version           int
 	Hashing_Salt                   []byte
-	Encrypt_IV                 []byte
+	Encrypt_IV                     []byte
 }
 
 type BinaryStruct struct {
@@ -40,4 +40,12 @@ func GetComplexPassword() string {
 
 	password := string(password_bytes)
 	return strings.TrimSpace(password)
+}
+
+func GetInputFileName() string {
+	fmt.Println("FileName:: ")
+	var fileName string
+	fmt.Scanf("%s", &fileName)
+
+	return strings.TrimSpace(fileName)
 }
