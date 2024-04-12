@@ -178,7 +178,7 @@ func (enc *EncryptUtil) desEncrypt() {
 	block, err := des.NewTripleDESCipher(enc.encryption_key)
 
 	if err != nil {
-		panic(err)
+		panic(err.Error())
 		// panic("the keys size is incrrect for 3des ")
 	}
 
@@ -229,13 +229,13 @@ func (enc *EncryptUtil) aesEncrypt() {
 		the main goal is to provide different block chaining modes abstracting key size checking for this function
 	*/
 	if strings.Contains(enc.inputArgs.Symmetric_encryption_algorithm, "gcm") {
-		nonce := enc.genRandBytes(12)
 		aesGcm, err := cipher.NewGCM(block)
-
+		nonce := enc.genRandBytes(aesGcm.NonceSize())
+		
 		if err != nil {
 			panic(err)
 		}
-		cipherText := aesGcm.Seal(nil, nonce, enc.readBuffer, nil)
+		cipherText := aesGcm.Seal(nonce, nonce, enc.readBuffer, nil)
 		fmt.Println("AES: GCM Mode")
 		utils.DebugEncodedKey(cipherText)
 
@@ -248,10 +248,10 @@ func (enc *EncryptUtil) aesEncrypt() {
 		mode.XORKeyStream(ciphertext, enc.readBuffer)
 		utils.DebugEncodedKey(ciphertext)
 
-		enc.initialize_vector = iv 
-		enc.encryptedContent = ciphertext 
+		enc.initialize_vector = iv
+		enc.encryptedContent = ciphertext
 
-	} else {
+	} else if strings.Contains(enc.inputArgs.Symmetric_encryption_algorithm, "cbc") {
 		var iv []byte = enc.genRandBytes(aes.BlockSize)
 		cbc := cipher.NewCBCEncrypter(block, iv)
 		var sample_plain_padding []byte
@@ -313,7 +313,7 @@ func (enc *EncryptUtil) writeEncyptedtoBinary(ciphertext []byte) {
 			Pbkdf2_iteration_count:         enc.inputArgs.Pbkdf2_iteration_count,
 			Encrypt_util_version:           enc.inputArgs.Version,
 			Hashing_Salt:                   enc.masterKeySalt,
-			Encrypt_IV_CBC:                 enc.initialize_vector,
+			Encrypt_IV:                     enc.initialize_vector,
 		}
 
 		binaryStruct := utils.BinaryStruct{

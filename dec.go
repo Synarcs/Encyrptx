@@ -139,7 +139,7 @@ func (dec *DecryptUtil) validateHmac() bool {
 		panic("Error the algorithm for key sign not supported")
 	}
 
-	message_integrity_content_check := append(dec.binaryBufferRead.Metadata.Encrypt_IV_CBC, dec.binaryBufferRead.Ciphertext...)
+	message_integrity_content_check := append(dec.binaryBufferRead.Metadata.Encrypt_IV, dec.binaryBufferRead.Ciphertext...)
 
 	hmac_hash.Write(message_integrity_content_check)
 	message_integrity_mac := hmac_hash.Sum(nil)
@@ -171,7 +171,7 @@ func (dec *DecryptUtil) desDecrypt() {
 		panic(err)
 	}
 
-	decrypt := cipher.NewCBCDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV_CBC)
+	decrypt := cipher.NewCBCDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV)
 	plaintext := make([]byte, len(dec.binaryBufferRead.Ciphertext))
 
 	decrypt.CryptBlocks(plaintext, dec.binaryBufferRead.Ciphertext)
@@ -198,21 +198,30 @@ func (dec *DecryptUtil) aesDecrypt() {
 		if error != nil {
 			panic(error)
 		}
-		nonce := dec.genRandBytes(12)
-		plainText, err := aesGcm.Open(nil, nonce, dec.binaryBufferRead.Ciphertext, nil)
-		if err != nil {
-			panic(err)
+		if len(dec.binaryBufferRead.Ciphertext) < aesGcm.NonceSize() {
+			panic("Error the Cipher Text Size is too small considering nounce ")
 		}
+
+		// slice the cipher block extracting the nonce and the cipher payload for the text  
+		// with the unique crypto rand nonce considered for the use of nounce (1 << 2) * 3 size generations 
+		nonce, ciphertext := dec.binaryBufferRead.Ciphertext[:aesGcm.NonceSize()],
+			dec.binaryBufferRead.Ciphertext[aesGcm.NonceSize():]
+		plaintext, err := aesGcm.Open(nil, nonce, ciphertext, nil)
+		if err != nil {
+			panic(err.Error())
+		}
+
 		fmt.Println("Decrypting using AES GCM:: ")
-		fmt.Println(plainText)
+		fmt.Println(string(plaintext))
 	} else if strings.Contains(dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "cfb") {
-		mode := cipher.NewCFBDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV_CBC)
+		mode := cipher.NewCFBDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV)
 		plaintext := make([]byte, len(dec.binaryBufferRead.Ciphertext))
 		mode.XORKeyStream(plaintext, dec.binaryBufferRead.Ciphertext)
 
 		fmt.Println("Decrypting using AES CFB:: ")
 		fmt.Println(string(plaintext))
-	} else {
+
+	} else if strings.Contains(dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "cbc") {
 		iv := dec.genRandBytes(aes.BlockSize)
 		mode := cipher.NewCBCDecrypter(block, iv) // gcm has the base main mode for nounce
 		plaintext := make([]byte, len(dec.binaryBufferRead.Ciphertext))

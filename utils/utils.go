@@ -15,7 +15,7 @@ type Metadata struct {
 	Pbkdf2_iteration_count         int
 	Encrypt_util_version           int
 	Hashing_Salt                   []byte
-	Encrypt_IV_CBC                 []byte
+	Encrypt_IV                 []byte
 }
 
 type BinaryStruct struct {
