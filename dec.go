@@ -3,12 +3,14 @@ package main
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/des"
 	"crypto/hmac"
 	"crypto/rand"
 	"encoding/gob"
 	"fmt"
 	"hash"
 	"os"
+	"strings"
 
 	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/crypto/sha3"
@@ -36,20 +38,20 @@ func (dec *DecryptUtil) getIv() []byte { return []byte("decrypt") }
 
 func (dec *DecryptUtil) getKeySize() int {
 	switch dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm {
-	case "des3-2k":
-		return 56 * 2
 	case "des3-3k":
-		return 56 * 3
-	case "aes-128-cbc":
+		return 192 / (1 << 3)
+	case "aes-128-cbc", "aes-128-cfb", "aes-128-gcm":
 		return (1 << 7) / (1 << 3) // aes key size (bits) / 1 byte size (pbkdf2 go requires key in bytes)
-	case "aes-256-cbc":
+	case "aes-256-cbc", "aes-256-cfb", "aes-256-gcm":
 		return (1 << 8) / (1 << 3)
 	default:
-		panic("Error the algorithm is not supported by dec Util")
+		panic("Error the algorithm is not supported by Enc Util")
 	}
 }
 
 var encrpt_file_name string = "input.enc"
+
+const debug bool = false
 
 func (dec *DecryptUtil) readBinary() {
 	ff, err := os.Open(encrpt_file_name)
@@ -62,6 +64,7 @@ func (dec *DecryptUtil) readBinary() {
 	err = decoder.Decode(&binaryStruct)
 	fmt.Println(binaryStruct.Metadata)
 	if err != nil {
+		err := "The Encrypted Binary is tampered or corrupted considering byte order of Big Endian"
 		panic(err)
 	}
 	dec.binaryBufferRead = binaryStruct
@@ -161,6 +164,25 @@ func pkcs7Unpad(data []byte) ([]byte, error) {
 	return data[:len(data)-padding], nil
 }
 
+func (dec *DecryptUtil) desDecrypt() {
+	block, err := des.NewTripleDESCipher(dec.encryption_key)
+
+	if err != nil {
+		panic(err)
+	}
+
+	decrypt := cipher.NewCBCDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV_CBC)
+	plaintext := make([]byte, len(dec.binaryBufferRead.Ciphertext))
+
+	decrypt.CryptBlocks(plaintext, dec.binaryBufferRead.Ciphertext)
+	// buffer, err := pkcs7Unpad(plaintext)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(string(plaintext))
+}
+
 func (dec *DecryptUtil) aesDecrypt() {
 	if len(dec.binaryBufferRead.Ciphertext) < aes.BlockSize {
 		panic("Error the encrypted content is too small for aes to decrypt")
@@ -171,14 +193,39 @@ func (dec *DecryptUtil) aesDecrypt() {
 		panic(err)
 	}
 
-	mode := cipher.NewCBCDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV_CBC) // gcm has the base main mode for nounce
-	plaintext := make([]byte, len(dec.binaryBufferRead.Ciphertext))
+	if strings.Contains(dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "gcm") {
+		aesGcm, error := cipher.NewGCM(block)
+		if error != nil {
+			panic(error)
+		}
+		nonce := dec.genRandBytes(12)
+		plainText, err := aesGcm.Open(nil, nonce, dec.binaryBufferRead.Ciphertext, nil)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("Decrypting using AES GCM:: ")
+		fmt.Println(plainText)
+	} else if strings.Contains(dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "cfb") {
+		mode := cipher.NewCFBDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV_CBC)
+		plaintext := make([]byte, len(dec.binaryBufferRead.Ciphertext))
+		mode.XORKeyStream(plaintext, dec.binaryBufferRead.Ciphertext)
 
-	mode.CryptBlocks(plaintext, dec.binaryBufferRead.Ciphertext)
+		fmt.Println("Decrypting using AES CFB:: ")
+		fmt.Println(string(plaintext))
+	} else {
+		iv := dec.genRandBytes(aes.BlockSize)
+		mode := cipher.NewCBCDecrypter(block, iv) // gcm has the base main mode for nounce
+		plaintext := make([]byte, len(dec.binaryBufferRead.Ciphertext))
 
-	buffer, err := pkcs7Unpad(plaintext)
-	if err != nil { panic(err) }
-	fmt.Println(string(buffer))
+		mode.CryptBlocks(plaintext, dec.binaryBufferRead.Ciphertext)
+
+		buffer, err := pkcs7Unpad(plaintext)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("Decrypting using AES CBC:: ")
+		fmt.Println(string(buffer))
+	}
 }
 
 func main() {
@@ -193,5 +240,9 @@ func main() {
 		panic(err)
 	}
 
-	decryptUtil.aesDecrypt()
+	if strings.HasPrefix(decryptUtil.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "aes") {
+		decryptUtil.aesDecrypt()
+	} else {
+		decryptUtil.desDecrypt()
+	}
 }
