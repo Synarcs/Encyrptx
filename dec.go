@@ -17,6 +17,7 @@ import (
 	"synarcs.com/css577/utils"
 )
 
+// the main util used to hold info for the decrypt tool
 type DecryptUtil struct {
 	binaryBufferRead utils.BinaryStruct
 
@@ -34,11 +35,13 @@ type DecryptUtil struct {
 	iv                  []byte
 }
 
-func (dec *DecryptUtil) getIv() []byte { return []byte("decrypt") }
-
+// since it uses pbkdf2 with a fixed length for different hashing algoritgh
+// matching the collusiona and hash strength of underlying hashing alg, the keySize should match the size of underlying
+// symmetric encryption algorithm
+// from NIST guidelenes irrespective of hashing algorithm its secure to keep the salt size 16 bytes
 func (dec *DecryptUtil) getKeySize() int {
 	switch dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm {
-	case "des3-3k":
+	case "des3-3k-cbc", "des3-3k-cfb":
 		return 192 / (1 << 3)
 	case "aes-128-cbc", "aes-128-cfb", "aes-128-gcm":
 		return (1 << 7) / (1 << 3) // aes key size (bits) / 1 byte size (pbkdf2 go requires key in bytes)
@@ -51,6 +54,7 @@ func (dec *DecryptUtil) getKeySize() int {
 
 const debug bool = false
 
+// read the binary encrypted file
 func (dec *DecryptUtil) readBinary(encrpt_file_name string) {
 	ff, err := os.Open(encrpt_file_name)
 	if err != nil {
@@ -80,7 +84,7 @@ func (dec *DecryptUtil) genRandBytes(bytelength int) []byte {
 
 func (dec *DecryptUtil) deriveMasterKey() {
 	salt := dec.binaryBufferRead.Metadata.Hashing_Salt // keeping this same as aes block size considering the stength to be of (1 << 16)  bits
-	password := utils.GetComplexPassword()
+	password := utils.GetComplexPassword("decrypt")
 	fmt.Println("Salt ::")
 	utils.DebugEncodedKey(salt)
 	var masterKey []byte
@@ -99,7 +103,9 @@ func (dec *DecryptUtil) deriveMasterKey() {
 	default:
 		fmt.Errorf("Algorithm Not supported")
 	}
-	utils.DebugEncodedKey(masterKey)
+	if debug {
+		utils.DebugEncodedKey(masterKey)
+	}
 	dec.master_key = masterKey
 }
 
@@ -118,8 +124,10 @@ func (dec *DecryptUtil) deriveHmacEncKeys() {
 	default:
 		fmt.Errorf("Algorithm Not Supported")
 	}
-	utils.DebugEncodedKey(hmac_key)
-	utils.DebugEncodedKey(enc_key)
+	if debug {
+		utils.DebugEncodedKey(hmac_key)
+		utils.DebugEncodedKey(enc_key)
+	}
 	dec.hmac_key = hmac_key
 	dec.encryption_key = enc_key
 }
@@ -137,6 +145,8 @@ func (dec *DecryptUtil) validateHmac() bool {
 		panic("Error the algorithm for key sign not supported")
 	}
 
+	// generate the hmac on decryption size the encryption IV + cipher text
+	// validate theis with the hmac code the ecnryption tool dumped in the binary file
 	message_integrity_content_check := append(dec.binaryBufferRead.Metadata.Encrypt_IV, dec.binaryBufferRead.Ciphertext...)
 
 	hmac_hash.Write(message_integrity_content_check)
@@ -145,7 +155,7 @@ func (dec *DecryptUtil) validateHmac() bool {
 	if debug {
 		fmt.Println(message_integrity_mac, dec.binaryBufferRead.Hmac)
 	}
-	
+
 	return hmac.Equal(message_integrity_mac, dec.binaryBufferRead.Hmac)
 }
 
@@ -168,6 +178,7 @@ func PKCSUnpad(data []byte) ([]byte, error) {
 	return data[:len(data)-padding], nil
 }
 
+// decrypt the des cipher content using the derived encryption keys 
 func (dec *DecryptUtil) desDecrypt() {
 	block, err := des.NewTripleDESCipher(dec.encryption_key)
 
@@ -175,18 +186,50 @@ func (dec *DecryptUtil) desDecrypt() {
 		panic(err)
 	}
 
-	decrypt := cipher.NewCBCDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV)
-	plaintext := make([]byte, len(dec.binaryBufferRead.Ciphertext))
+	if strings.Contains(dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "gcm") {
+		desGCM, error := cipher.NewGCM(block)
+		if error != nil {
+			panic(error)
+		}
+		if len(dec.binaryBufferRead.Ciphertext) < desGCM.NonceSize() {
+			panic("Error the Cipher Text Size is too small considering nounce ")
+		}
 
-	decrypt.CryptBlocks(plaintext, dec.binaryBufferRead.Ciphertext)
-	// buffer, err := pkcs7Unpad(plaintext)
-	if err != nil {
-		panic(err)
+		// slice the cipher block extracting the nonce and the cipher payload for the text
+		// with the unique crypto rand nonce considered for the use of nounce (1 << 2) * 3 size generations
+		nonce, ciphertext := dec.binaryBufferRead.Ciphertext[:desGCM.NonceSize()],
+			dec.binaryBufferRead.Ciphertext[desGCM.NonceSize():]
+		plaintext, err := desGCM.Open(nil, nonce, ciphertext, nil)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		fmt.Println("Decrypting using DES GCM:: ")
+		fmt.Println(string(plaintext))
+	} else if strings.Contains(dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "cfb") {
+		mode := cipher.NewCFBDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV)
+		plaintext := make([]byte, len(dec.binaryBufferRead.Ciphertext))
+		mode.XORKeyStream(plaintext, dec.binaryBufferRead.Ciphertext)
+
+		fmt.Println("Decrypting using DES CFB:: ")
+		fmt.Println(string(plaintext))
+
+	} else if strings.Contains(dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "cbc") {
+		decrypt := cipher.NewCBCDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV)
+		plaintext := make([]byte, len(dec.binaryBufferRead.Ciphertext))
+
+		decrypt.CryptBlocks(plaintext, dec.binaryBufferRead.Ciphertext)
+		// buffer, err := pkcs7Unpad(plaintext)
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println("Decrypting using DES CBC:: ")
+		fmt.Println(string(plaintext))
 	}
-
-	fmt.Println(string(plaintext))
 }
 
+// decrypt the aes cipher content using the derived encryption keys 
 func (dec *DecryptUtil) aesDecrypt() {
 	if len(dec.binaryBufferRead.Ciphertext) < aes.BlockSize {
 		panic("Error the encrypted content is too small for aes to decrypt")
@@ -242,13 +285,20 @@ func (dec *DecryptUtil) aesDecrypt() {
 	}
 }
 
+func debugInputParamsMetadata(metadata *utils.Metadata) {
+	fmt.Println("--- Hashing Algorithm --- ", metadata.Hashing_algorithm)
+	fmt.Println("--- Encryption Algorithm --- ", metadata.Symmetric_encryption_algorithm)
+	fmt.Println("--- KDF Interation Count  --- ", metadata.Pbkdf2_iteration_count)
+}
+
 func main() {
 	var decryptUtil *DecryptUtil = &DecryptUtil{}
 
-	encrpt_file_name := utils.GetInputFileName()
+	fmt.Println("//////// Decryption Tool Started //////// ")
+	encrpt_file_name := utils.GetInputFileName("decrypt")
 
-	encrpt_file_name = encrpt_file_name + ".enc"
 	decryptUtil.readBinary(encrpt_file_name)
+	debugInputParamsMetadata(&decryptUtil.binaryBufferRead.Metadata)
 	decryptUtil.deriveMasterKey()
 	decryptUtil.deriveHmacEncKeys()
 
@@ -262,4 +312,6 @@ func main() {
 	} else {
 		decryptUtil.desDecrypt()
 	}
+
+	fmt.Printf("\n ////////  Encryption Completed Encrypted file stored in %s /////", encrpt_file_name)
 }

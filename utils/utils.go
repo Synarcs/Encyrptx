@@ -34,8 +34,12 @@ func DebugEncodedKey(key []byte) {
 	fmt.Println(hex.EncodeToString(key))
 }
 
-func GetComplexPassword() string {
-	fmt.Println("Password:: ")
+func GetComplexPassword(mode string) string {
+	if mode == "encrypt" {
+		fmt.Println("Password for Encryption:: ")
+	} else {
+		fmt.Println("Password for Decryption:: ")
+	}
 	password_bytes, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		panic(err)
@@ -45,8 +49,12 @@ func GetComplexPassword() string {
 	return strings.TrimSpace(password)
 }
 
-func GetInputFileName() string {
-	fmt.Println("FileName:: ")
+func GetInputFileName(mode string) string {
+	if mode == "encrypt" {
+		fmt.Println("Input PlainText FileName:: ")
+	} else {
+		fmt.Println("Input Encrypted FileName:: ")
+	}
 	var fileName string
 	fmt.Scanf("%s", &fileName)
 

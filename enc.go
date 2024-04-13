@@ -22,6 +22,9 @@ import (
 	"synarcs.com/css577/utils"
 )
 
+/*
+Input Args Struct for the encryption tool
+*/
 type EncryptUtilInputArgs struct {
 	Version int `yaml:"version"`
 
@@ -35,6 +38,9 @@ type EncryptUtilInputArgs struct {
 	Encrypted_file_output_name string `yaml:"encrypted_file_output_name"`
 }
 
+/*
+Encrypt tool util struct
+*/
 type EncryptUtil struct {
 	inputArgs *EncryptUtilInputArgs
 
@@ -75,22 +81,27 @@ func (conf *EncryptUtilInputArgs) readConfFile(fileName string) *EncryptUtilInpu
 	return conf
 }
 
+// since it uses pbkdf2 with a fixed length for different hashing algoritgh
+// matching the collusiona and hash strength of underlying hashing alg, the keySize should match the size of underlying
+// symmetric encryption algorithm
+// from NIST guidelenes irrespective of hashing algorithm its secure to keep the salt size 16 bytes
 func (enc *EncryptUtil) getKeySize() int {
 	switch enc.inputArgs.Symmetric_encryption_algorithm {
-	case "des3-3k":
-		return 192 / (1 << 3)
+	case "des3-3k-cbc", "des3-3k-cfb":
+		return 192 / (1 << 3) // (24 bytes (internal 3 keys of 8 bytes each))
 	case "aes-128-cbc", "aes-128-cfb", "aes-128-gcm":
-		return (1 << 7) / (1 << 3) // aes key size (bits) / 1 byte size (pbkdf2 go requires key in bytes)
+		return (1 << 7) / (1 << 3) // aes key size (bits) / 1 byte size (pbkdf2 go requires key in bytes) (16 bytes)
 	case "aes-256-cbc", "aes-256-cfb", "aes-256-gcm":
-		return (1 << 8) / (1 << 3)
+		return (1 << 8) / (1 << 3) // (32 bytes)
 	default:
 		panic("Error the algorithm is not supported by Enc Util")
 	}
 }
 
+// derive the master key using pbkdf2 based the keysize found for underlying symmetric encryption alg
 func (enc *EncryptUtil) generateMasterKey() {
 	salt := enc.genRandBytes(aes.BlockSize) // keeping this same as aes block size considering the stength to be of (1 << 16)  bits
-	password := utils.GetComplexPassword()
+	password := utils.GetComplexPassword("encrypt")
 
 	var masterKey []byte
 	keyLength := enc.getKeySize()
@@ -117,6 +128,8 @@ func (enc *EncryptUtil) generateMasterKey() {
 	enc.masterKeySalt = salt
 }
 
+// derive the hmac and encryption key from the master key
+// the hmac and encryption key use a fixed salt
 func (enc *EncryptUtil) deriveHmacEncKeys() {
 	saltString_enc := []byte("encrption_fixed_str")
 	saltString_hmac := []byte("hmac_fixed_str")
@@ -150,7 +163,9 @@ func (enc *EncryptUtil) genRandBytes(bytelength int) []byte {
 	return randBytes
 }
 
-func (enc *EncryptUtil) readFileAndEncryptFlush(fileName string) {
+// read the file to be encrypted
+// read the entire file using readall from the open file descriptor as against reading line by line
+func (enc *EncryptUtil) readFileBufffer(fileName string) {
 	var readBuffer []byte
 	file, err := os.Open(fileName)
 
@@ -169,12 +184,12 @@ func (enc *EncryptUtil) readFileAndEncryptFlush(fileName string) {
 }
 
 // des will use pkcs5 padding and only maling it work first des for cbc mode
-// TODO: Also adding support for other modes later
 func (enc *EncryptUtil) desEncrypt() {
 	input_file_name := enc.inputArgs.Plain_text_file_name
 
-	enc.readFileAndEncryptFlush(input_file_name)
+	enc.readFileBufffer(input_file_name)
 
+	// init the block size for the 3DES (DES done 3 times) (8 bytes)
 	block, err := des.NewTripleDESCipher(enc.encryption_key)
 
 	if err != nil {
@@ -182,38 +197,63 @@ func (enc *EncryptUtil) desEncrypt() {
 		// panic("the keys size is incrrect for 3des ")
 	}
 
-	sample_plain_raw_padding := PKCSPadding([]byte(enc.readBuffer), block)
-	iv := enc.genRandBytes(des.BlockSize)
+	/*
+		GCM (Galois/Counter Mode) is an encryption mode that combines the Counter Mode (CTR) of encryption with polynomial hashing.
+			 GCM mode only works with 128 bits blocks that AES uses
+			 DES wont work with GCM because the block size is 8 bytes or 64 bits
+	*/
+	if strings.Contains(enc.inputArgs.Symmetric_encryption_algorithm, "cfb") {
+		var iv []byte = enc.genRandBytes(des.BlockSize)
+		mode := cipher.NewCFBEncrypter(block, iv)
+		ciphertext := make([]byte, len(enc.readBuffer))
 
-	cipher_encryptor := cipher.NewCBCEncrypter(block, iv)
+		mode.XORKeyStream(ciphertext, enc.readBuffer)
+		if debug && len(ciphertext) < (1<<8) {
+			fmt.Println("DES: CFB Mode")
+			utils.DebugEncodedKey(ciphertext)
+		}
 
-	ciphertext := make([]byte, len(sample_plain_raw_padding))
+		enc.initialize_vector = iv
+		enc.encryptedContent = ciphertext
+	} else if strings.Contains(enc.inputArgs.Symmetric_encryption_algorithm, "cbc") {
+		// des follows pkcs5 based padding support
+		sample_plain_raw_padding := PKCSPadding([]byte(enc.readBuffer), block)
+		iv := enc.genRandBytes(des.BlockSize)
+		// init the mode
+		cipher_encryptor := cipher.NewCBCEncrypter(block, iv)
 
-	cipher_encryptor.CryptBlocks(ciphertext, sample_plain_raw_padding)
+		ciphertext := make([]byte, len(sample_plain_raw_padding))
 
-	if len(ciphertext) < (1 << 8) {
-		utils.DebugEncodedKey(ciphertext)
+		cipher_encryptor.CryptBlocks(ciphertext, sample_plain_raw_padding)
+
+		if debug && len(ciphertext) < (1<<8) {
+			utils.DebugEncodedKey(ciphertext)
+		}
+		enc.initialize_vector = iv
+		enc.encryptedContent = ciphertext
 	}
-	enc.initialize_vector = iv
-	enc.encryptedContent = ciphertext
+
 }
 
+// padding support to implement padding similar to pkcs7 standards
 func PKCSPadding(ciphertext []byte, block cipher.Block) []byte {
 	if len(ciphertext)%block.BlockSize() == 0 {
 		return ciphertext
 	}
+	// no. of padding bytes which are required
 	padding := block.BlockSize() - len(ciphertext)%block.BlockSize()
+
+	// Create a byte slice with the padding value repeated 'padding' times
 	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
-	return append(ciphertext, padtext...)
+	return append(ciphertext, padtext...) // append this to the ciphertext
 }
 
 // this can also cover aes different block chaining modes
-// TODO: Add support for different chaining mode in the same method
 func (enc *EncryptUtil) aesEncrypt() {
 
 	input_file_name := enc.inputArgs.Plain_text_file_name
 
-	enc.readFileAndEncryptFlush(input_file_name)
+	enc.readFileBufffer(input_file_name)
 
 	// go main crypto uses pkcs7 padding for aes all modes
 	if debug {
@@ -238,8 +278,10 @@ func (enc *EncryptUtil) aesEncrypt() {
 			panic(err)
 		}
 		cipherText := aesGcm.Seal(nonce, nonce, enc.readBuffer, nil)
-		fmt.Println("AES: GCM Mode")
-		utils.DebugEncodedKey(cipherText)
+		if debug && len(cipherText) < (1<<8) {
+			fmt.Println("AES: GCM Mode")
+			utils.DebugEncodedKey(cipherText)
+		}
 
 		enc.encryptedContent = cipherText
 	} else if strings.Contains(enc.inputArgs.Symmetric_encryption_algorithm, "cfb") {
@@ -248,7 +290,11 @@ func (enc *EncryptUtil) aesEncrypt() {
 		ciphertext := make([]byte, len(enc.readBuffer))
 
 		mode.XORKeyStream(ciphertext, enc.readBuffer)
-		utils.DebugEncodedKey(ciphertext)
+
+		if debug && len(ciphertext) < (1<<8) {
+			fmt.Println("AES: CFB Mode")
+			utils.DebugEncodedKey(ciphertext)
+		}
 
 		enc.initialize_vector = iv
 		enc.encryptedContent = ciphertext
@@ -265,8 +311,10 @@ func (enc *EncryptUtil) aesEncrypt() {
 
 		cbc.CryptBlocks(ciphertext, sample_plain_padding)
 
-		fmt.Println("AES: CBC Mode")
-		utils.DebugEncodedKey(ciphertext)
+		if debug && len(ciphertext) < (1<<8) {
+			fmt.Println("AES: CBC Mode")
+			utils.DebugEncodedKey(ciphertext)
+		}
 
 		// store the message storage block
 		enc.initialize_vector = iv
@@ -274,6 +322,7 @@ func (enc *EncryptUtil) aesEncrypt() {
 	}
 }
 
+// function to generate the hmac integrity code over the encrypted content
 func (enc *EncryptUtil) generateHmacOverEncryption() {
 
 	var hmac_hash hash.Hash
@@ -287,17 +336,28 @@ func (enc *EncryptUtil) generateHmacOverEncryption() {
 		panic("Error the algorithm for key sign not supported")
 	}
 
+	// the hmac should be generated over the IV + Encrypted content
 	message_integrity_content := append(enc.initialize_vector, enc.encryptedContent...)
 
 	hmac_hash.Write(message_integrity_content)
 
+	// no need to append some extra padding of bytes over the hmac integrity code hash
 	message_integrity_mac := hmac_hash.Sum(nil)
 	enc.hmac_integrity_code = message_integrity_mac
 
-	fmt.Println("Hmac code is : Hashed using ", enc.inputArgs.Hashing_algorithm)
-	utils.DebugEncodedKey(message_integrity_mac)
+	if debug {
+		fmt.Println("Hmac code is : Hashed using ", enc.inputArgs.Hashing_algorithm)
+		utils.DebugEncodedKey(message_integrity_mac)
+	}
 }
 
+// function util to write the output in the bianry format
+// the structure of the bianry is
+// during ecnrypption first encrypt and tehm mac
+//
+//	Metadata + HMAC (iV + Cipher_text) + Cipher_Text (Payload)
+//
+// The binary format is go serialized binary or GOB
 func (enc *EncryptUtil) writeEncyptedtoBinary(ciphertext []byte) {
 	handler := func() {
 		file, err := os.Create(enc.inputArgs.Encrypted_file_output_name)
@@ -349,14 +409,24 @@ func (enc *EncryptUtil) writeEncyptedtoBinary(ciphertext []byte) {
 	}
 }
 
+func debugInputParamsMetadata(inputArgs *EncryptUtilInputArgs) {
+	fmt.Println("--- Util Version --- ", inputArgs.Version)
+	fmt.Println("--- Hashing Algorithm --- ", inputArgs.Hashing_algorithm)
+	fmt.Println("--- Encryption Algorithm --- ", inputArgs.Symmetric_encryption_algorithm)
+	fmt.Println("--- KDF Interation Count  --- ", inputArgs.Pbkdf2_iteration_count)
+	fmt.Println("--- Encrypted Output File Name  --- ", inputArgs.Encrypted_file_output_name)
+}
+
+// main driver to run the encryption util over the payload
 func main() {
 	var encrypt_util *EncryptUtil = &EncryptUtil{}
 	var encrypt_util_input *EncryptUtilInputArgs = &EncryptUtilInputArgs{}
 
-	fileName := utils.GetInputFileName()
+	fmt.Println("//////// Encryption Tool Started //////// ")
+	fileName := utils.GetInputFileName("encrypt")
 
 	encrypt_util_input = encrypt_util_input.readConfFile(fileName)
-	fmt.Println(*encrypt_util_input)
+	debugInputParamsMetadata(encrypt_util_input)
 
 	encrypt_util.inputArgs = encrypt_util_input
 	encrypt_util.inputArgs.Plain_text_file_name = fileName
@@ -371,4 +441,5 @@ func main() {
 
 	encrypt_util.generateHmacOverEncryption()
 	encrypt_util.writeEncyptedtoBinary(encrypt_util.encryptedContent)
+	fmt.Printf("\n ////////  Encryption Completed Encrypted file stored in %s /////", encrypt_util_input.Encrypted_file_output_name)
 }
