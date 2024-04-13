@@ -1,5 +1,5 @@
 version: 3
 hashing_algorithm: "sha512" # this will use sha3 to prevent the brute force attack issue over sha2 
-symmetric_encryption_algorithm: "aes-128-gcm"
-pbkdf2_iteration_count: 16
+symmetric_encryption_algorithm: "aes-256-gcm"
+pbkdf2_iteration_count: 32
 encrypted_file_output_name:  "input.enc"

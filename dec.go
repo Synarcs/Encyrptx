@@ -142,23 +142,29 @@ func (dec *DecryptUtil) validateHmac() bool {
 	hmac_hash.Write(message_integrity_content_check)
 	message_integrity_mac := hmac_hash.Sum(nil)
 
-	fmt.Println(message_integrity_mac, dec.binaryBufferRead.Hmac)
+	if debug {
+		fmt.Println(message_integrity_mac, dec.binaryBufferRead.Hmac)
+	}
+	
 	return hmac.Equal(message_integrity_mac, dec.binaryBufferRead.Hmac)
 }
 
-func pkcs7Unpad(data []byte) ([]byte, error) {
+func PKCSUnpad(data []byte) ([]byte, error) {
 	if len(data) == 0 {
 		return nil, fmt.Errorf("input data is empty")
 	}
 	padding := int(data[len(data)-1])
+
 	if padding == 0 || padding > len(data) {
 		return nil, fmt.Errorf("invalid padding")
 	}
+
 	for i := len(data) - padding; i < len(data); i++ {
 		if data[i] != byte(padding) {
 			return nil, fmt.Errorf("invalid padding bytes")
 		}
 	}
+
 	return data[:len(data)-padding], nil
 }
 
@@ -200,8 +206,8 @@ func (dec *DecryptUtil) aesDecrypt() {
 			panic("Error the Cipher Text Size is too small considering nounce ")
 		}
 
-		// slice the cipher block extracting the nonce and the cipher payload for the text  
-		// with the unique crypto rand nonce considered for the use of nounce (1 << 2) * 3 size generations 
+		// slice the cipher block extracting the nonce and the cipher payload for the text
+		// with the unique crypto rand nonce considered for the use of nounce (1 << 2) * 3 size generations
 		nonce, ciphertext := dec.binaryBufferRead.Ciphertext[:aesGcm.NonceSize()],
 			dec.binaryBufferRead.Ciphertext[aesGcm.NonceSize():]
 		plaintext, err := aesGcm.Open(nil, nonce, ciphertext, nil)
@@ -220,16 +226,17 @@ func (dec *DecryptUtil) aesDecrypt() {
 		fmt.Println(string(plaintext))
 
 	} else if strings.Contains(dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "cbc") {
-		iv := dec.genRandBytes(aes.BlockSize)
-		mode := cipher.NewCBCDecrypter(block, iv) // gcm has the base main mode for nounce
+		// iv := dec.genRandBytes(aes.BlockSize)
+		mode := cipher.NewCBCDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV) // gcm has the base main mode for nounce
 		plaintext := make([]byte, len(dec.binaryBufferRead.Ciphertext))
 
 		mode.CryptBlocks(plaintext, dec.binaryBufferRead.Ciphertext)
 
-		buffer, err := pkcs7Unpad(plaintext)
+		buffer, err := PKCSUnpad(plaintext)
 		if err != nil {
 			panic(err)
 		}
+
 		fmt.Println("Decrypting using AES CBC:: ")
 		fmt.Println(string(buffer))
 	}

@@ -191,7 +191,9 @@ func (enc *EncryptUtil) desEncrypt() {
 
 	cipher_encryptor.CryptBlocks(ciphertext, sample_plain_raw_padding)
 
-	utils.DebugEncodedKey(ciphertext)
+	if len(ciphertext) < (1 << 8) {
+		utils.DebugEncodedKey(ciphertext)
+	}
 	enc.initialize_vector = iv
 	enc.encryptedContent = ciphertext
 }
@@ -331,7 +333,7 @@ func (enc *EncryptUtil) writeEncyptedtoBinary(ciphertext []byte) {
 		// I built and compiled the code on m2 arm which follows BigEndian for binary order consider arm cpu architecture
 
 		if err != nil {
-			panic(err)
+			panic(err.Error())
 		}
 
 	}
