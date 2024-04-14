@@ -10,8 +10,10 @@ import (
 	"fmt"
 	"hash"
 	"os"
+	"runtime"
 	"strings"
 
+	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/crypto/sha3"
 	"synarcs.com/css577/utils"
@@ -82,11 +84,43 @@ func (dec *DecryptUtil) genRandBytes(bytelength int) []byte {
 	return randBytes
 }
 
+func (dec *DecryptUtil) deriveAeronMasterKey() {
+	salt := dec.binaryBufferRead.Metadata.Hashing_Salt // keeping this same as aes block size considering the stength to be of (1 << 16)  bits
+	password := utils.GetComplexPassword("decrypt")
+
+	var masterKey []byte
+	cpuCount := runtime.NumCPU()
+	keyLength := dec.getKeySize()
+
+	masterKey = argon2.Key([]byte(password), salt, 3, 32*(1<<10), uint8(cpuCount), uint32(keyLength))
+	dec.master_key = masterKey
+}
+
+func (dec *DecryptUtil) deriveAeronEncHmacKeys() {
+	saltString_enc := []byte("encrption_fixed_str")
+	saltString_hmac := []byte("hmac_fixed_str")
+
+	var hmac_key []byte
+	var enc_key []byte
+	cpuCount := runtime.NumCPU()
+
+	keySize := dec.getKeySize()
+	hmac_key = argon2.Key(dec.hmac_key,
+		saltString_hmac, 3, 3*(1<<10), uint8(cpuCount), uint32(keySize))
+	enc_key = argon2.Key(dec.encryption_key,
+		saltString_enc, 3, 3*(1<<10), uint8(cpuCount), uint32(keySize))
+
+	dec.hmac_key = hmac_key
+	dec.encryption_key = enc_key
+}
+
 func (dec *DecryptUtil) deriveMasterKey() {
 	salt := dec.binaryBufferRead.Metadata.Hashing_Salt // keeping this same as aes block size considering the stength to be of (1 << 16)  bits
 	password := utils.GetComplexPassword("decrypt")
-	fmt.Println("Salt ::")
-	utils.DebugEncodedKey(salt)
+	if debug {
+		fmt.Println("Salt ::")
+		utils.DebugEncodedKey(salt)
+	}
 	var masterKey []byte
 	keyLength := dec.getKeySize()
 	fmt.Printf("Key Size Used for Algorithm :: %s size :: %d bytes \n", dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, keyLength)
@@ -178,7 +212,7 @@ func PKCSUnpad(data []byte) ([]byte, error) {
 	return data[:len(data)-padding], nil
 }
 
-// decrypt the des cipher content using the derived encryption keys 
+// decrypt the des cipher content using the derived encryption keys
 func (dec *DecryptUtil) desDecrypt() {
 	block, err := des.NewTripleDESCipher(dec.encryption_key)
 
@@ -229,7 +263,7 @@ func (dec *DecryptUtil) desDecrypt() {
 	}
 }
 
-// decrypt the aes cipher content using the derived encryption keys 
+// decrypt the aes cipher content using the derived encryption keys
 func (dec *DecryptUtil) aesDecrypt() {
 	if len(dec.binaryBufferRead.Ciphertext) < aes.BlockSize {
 		panic("Error the encrypted content is too small for aes to decrypt")
@@ -285,7 +319,7 @@ func (dec *DecryptUtil) aesDecrypt() {
 	}
 }
 
-func debugInputParamsMetadata(metadata *utils.Metadata) {
+func (dec *DecryptUtil) debugInputParamsMetadata(metadata *utils.Metadata) {
 	fmt.Println("--- Hashing Algorithm --- ", metadata.Hashing_algorithm)
 	fmt.Println("--- Encryption Algorithm --- ", metadata.Symmetric_encryption_algorithm)
 	fmt.Println("--- KDF Interation Count  --- ", metadata.Pbkdf2_iteration_count)
@@ -298,7 +332,7 @@ func main() {
 	encrpt_file_name := utils.GetInputFileName("decrypt")
 
 	decryptUtil.readBinary(encrpt_file_name)
-	debugInputParamsMetadata(&decryptUtil.binaryBufferRead.Metadata)
+	decryptUtil.debugInputParamsMetadata(&decryptUtil.binaryBufferRead.Metadata)
 	decryptUtil.deriveMasterKey()
 	decryptUtil.deriveHmacEncKeys()
 
@@ -313,5 +347,5 @@ func main() {
 		decryptUtil.desDecrypt()
 	}
 
-	fmt.Printf("\n ////////  Encryption Completed Encrypted file stored in %s /////", encrpt_file_name)
+	fmt.Printf("\n ////////  Decryption Completed //////")
 }

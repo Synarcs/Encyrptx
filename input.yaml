@@ -1,5 +1,6 @@
 version: 3
-hashing_algorithm: "sha512" # this will use sha3 to prevent the brute force attack issue over sha2 
-symmetric_encryption_algorithm: "des3-3k-cfb"
+hashing_algorithm: "sha256" # this will use sha3 to prevent the brute force attack issue over sha2 
+symmetric_encryption_algorithm: "aes-256-cbc"
 pbkdf2_iteration_count: 64
 encrypted_file_output_name:  "input.enc"
+argon_hash_mode: false

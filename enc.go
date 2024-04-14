@@ -14,8 +14,10 @@ import (
 	"hash"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 
+	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/crypto/sha3"
 	"gopkg.in/yaml.v2"
@@ -96,6 +98,35 @@ func (enc *EncryptUtil) getKeySize() int {
 	default:
 		panic("Error the algorithm is not supported by Enc Util")
 	}
+}
+
+func (enc *EncryptUtil) generateArgonMasterHash() {
+	salt := enc.genRandBytes(aes.BlockSize)
+	password := utils.GetComplexPassword("encrypt")
+	cpuCount := runtime.NumCPU()
+
+	keySize := enc.getKeySize()
+	masterKey := argon2.Key([]byte(password), salt, 3, 32*(1<<10), uint8(cpuCount), uint32(keySize))
+
+	enc.master_key = masterKey
+}
+
+func (enc *EncryptUtil) generateArgonChildHashes() {
+	saltString_enc := []byte("encrption_fixed_str")
+	saltString_hmac := []byte("hmac_fixed_str")
+
+	var hmac_key []byte
+	var enc_key []byte
+	cpuCount := runtime.NumCPU()
+
+	keySize := enc.getKeySize()
+	hmac_key = argon2.Key(enc.hmac_key,
+		saltString_hmac, 3, 3*(1<<10), uint8(cpuCount), uint32(keySize))
+	enc_key = argon2.Key(enc.encryption_key,
+		saltString_enc, 3, 3*(1<<10), uint8(cpuCount), uint32(keySize))
+
+	enc.hmac_key = hmac_key
+	enc.encryption_key = enc_key
 }
 
 // derive the master key using pbkdf2 based the keysize found for underlying symmetric encryption alg
@@ -383,6 +414,7 @@ func (enc *EncryptUtil) writeEncyptedtoBinary(ciphertext []byte) {
 			Hmac:       enc.hmac_integrity_code,
 			Ciphertext: enc.encryptedContent,
 		}
+
 		binaryStruct.MetadataSize = binary.Size(binaryStruct.Metadata)
 		binaryStruct.CiphertextSize = binary.Size(binaryStruct.Ciphertext)
 		binaryStruct.HmacSize = binary.Size(binaryStruct.Hmac)
@@ -409,7 +441,7 @@ func (enc *EncryptUtil) writeEncyptedtoBinary(ciphertext []byte) {
 	}
 }
 
-func debugInputParamsMetadata(inputArgs *EncryptUtilInputArgs) {
+func (enc *EncryptUtil) debugInputParamsMetadata(inputArgs *EncryptUtilInputArgs) {
 	fmt.Println("--- Util Version --- ", inputArgs.Version)
 	fmt.Println("--- Hashing Algorithm --- ", inputArgs.Hashing_algorithm)
 	fmt.Println("--- Encryption Algorithm --- ", inputArgs.Symmetric_encryption_algorithm)
@@ -426,10 +458,10 @@ func main() {
 	fileName := utils.GetInputFileName("encrypt")
 
 	encrypt_util_input = encrypt_util_input.readConfFile(fileName)
-	debugInputParamsMetadata(encrypt_util_input)
-
+	encrypt_util.debugInputParamsMetadata(encrypt_util_input)
 	encrypt_util.inputArgs = encrypt_util_input
 	encrypt_util.inputArgs.Plain_text_file_name = fileName
+
 	encrypt_util.generateMasterKey()
 	encrypt_util.deriveHmacEncKeys()
 
