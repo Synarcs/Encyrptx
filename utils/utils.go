@@ -16,6 +16,7 @@ type Metadata struct {
 	Encrypt_util_version           int
 	Hashing_Salt                   []byte
 	Encrypt_IV                     []byte
+	Argon_Hash_Mode                bool
 }
 
 type BinaryStruct struct {

@@ -38,6 +38,7 @@ type EncryptUtilInputArgs struct {
 	Pbkdf2_iteration_count     int    `yaml:"pbkdf2_iteration_count"`
 	Plain_text_file_name       string `yaml:"plain_text_file_name"`
 	Encrypted_file_output_name string `yaml:"encrypted_file_output_name"`
+	Argon_Hash_Mode            bool   `yaml:"argon_hash_mode"`
 }
 
 /*
@@ -87,14 +88,16 @@ func (conf *EncryptUtilInputArgs) readConfFile(fileName string) *EncryptUtilInpu
 // matching the collusiona and hash strength of underlying hashing alg, the keySize should match the size of underlying
 // symmetric encryption algorithm
 // from NIST guidelenes irrespective of hashing algorithm its secure to keep the salt size 16 bytes
+// if i create size same as the encryption key the has strength is n / 2 but better to keep it twice the zie and truncate in half
+// this ensures stronger hash strength equals the length of key but require the key to be truncated into half
 func (enc *EncryptUtil) getKeySize() int {
 	switch enc.inputArgs.Symmetric_encryption_algorithm {
 	case "des3-3k-cbc", "des3-3k-cfb":
-		return 192 / (1 << 3) // (24 bytes (internal 3 keys of 8 bytes each))
+		return (192 / (1 << 3)) * 2 // (24 bytes (internal 3 keys of 8 bytes each))
 	case "aes-128-cbc", "aes-128-cfb", "aes-128-gcm":
-		return (1 << 7) / (1 << 3) // aes key size (bits) / 1 byte size (pbkdf2 go requires key in bytes) (16 bytes)
+		return ((1 << 7) / (1 << 3)) * 2 // aes key size (bits) / 1 byte size (pbkdf2 go requires key in bytes) (16 bytes)
 	case "aes-256-cbc", "aes-256-cfb", "aes-256-gcm":
-		return (1 << 8) / (1 << 3) // (32 bytes)
+		return ((1 << 8) / (1 << 3)) * 2 // (32 bytes)
 	default:
 		panic("Error the algorithm is not supported by Enc Util")
 	}
@@ -108,10 +111,10 @@ func (enc *EncryptUtil) generateArgonMasterHash() {
 	keySize := enc.getKeySize()
 	masterKey := argon2.Key([]byte(password), salt, 3, 32*(1<<10), uint8(cpuCount), uint32(keySize))
 
-	enc.master_key = masterKey
+	enc.master_key = masterKey[:len(masterKey)/2]
 }
 
-func (enc *EncryptUtil) generateArgonChildHashes() {
+func (enc *EncryptUtil) generateArgonEncHmacHashes() {
 	saltString_enc := []byte("encrption_fixed_str")
 	saltString_hmac := []byte("hmac_fixed_str")
 
@@ -125,8 +128,8 @@ func (enc *EncryptUtil) generateArgonChildHashes() {
 	enc_key = argon2.Key(enc.encryption_key,
 		saltString_enc, 3, 3*(1<<10), uint8(cpuCount), uint32(keySize))
 
-	enc.hmac_key = hmac_key
-	enc.encryption_key = enc_key
+	enc.hmac_key = hmac_key[:len(hmac_key)/2]
+	enc.encryption_key = enc_key[:len(enc_key)/2]
 }
 
 // derive the master key using pbkdf2 based the keysize found for underlying symmetric encryption alg
@@ -155,7 +158,7 @@ func (enc *EncryptUtil) generateMasterKey() {
 		utils.DebugEncodedKey(salt)
 		utils.DebugEncodedKey(masterKey)
 	}
-	enc.master_key = masterKey
+	enc.master_key = masterKey[:len(masterKey)/2]
 	enc.masterKeySalt = salt
 }
 
@@ -168,11 +171,11 @@ func (enc *EncryptUtil) deriveHmacEncKeys() {
 	var enc_key []byte
 	switch enc.inputArgs.Hashing_algorithm {
 	case "sha256":
-		hmac_key = pbkdf2.Key(enc.master_key, saltString_hmac, 1, len(enc.master_key), sha3.New256)
-		enc_key = pbkdf2.Key(enc.master_key, saltString_enc, 1, len(enc.master_key), sha3.New256)
+		hmac_key = pbkdf2.Key(enc.master_key, saltString_hmac, 1, len(enc.master_key)*2, sha3.New256)
+		enc_key = pbkdf2.Key(enc.master_key, saltString_enc, 1, len(enc.master_key)*2, sha3.New256)
 	case "sha512":
-		hmac_key = pbkdf2.Key(enc.master_key, saltString_hmac, 1, len(enc.master_key), sha3.New512)
-		enc_key = pbkdf2.Key(enc.master_key, saltString_enc, 1, len(enc.master_key), sha3.New512)
+		hmac_key = pbkdf2.Key(enc.master_key, saltString_hmac, 1, len(enc.master_key)*2, sha3.New512)
+		enc_key = pbkdf2.Key(enc.master_key, saltString_enc, 1, len(enc.master_key)*2, sha3.New512)
 	default:
 		fmt.Errorf("Algorithm Not Supported")
 	}
@@ -180,8 +183,8 @@ func (enc *EncryptUtil) deriveHmacEncKeys() {
 		utils.DebugEncodedKey(hmac_key)
 		utils.DebugEncodedKey(enc_key)
 	}
-	enc.hmac_key = hmac_key
-	enc.encryption_key = enc_key
+	enc.hmac_key = hmac_key[:len(hmac_key)/2]
+	enc.encryption_key = enc_key[:len(enc_key)/2]
 }
 
 // Used the crypto rand as agains math/rand which uses psuedo random number causing more collusion in the generated random output
@@ -407,6 +410,7 @@ func (enc *EncryptUtil) writeEncyptedtoBinary(ciphertext []byte) {
 			Encrypt_util_version:           enc.inputArgs.Version,
 			Hashing_Salt:                   enc.masterKeySalt,
 			Encrypt_IV:                     enc.initialize_vector,
+			Argon_Hash_Mode:                enc.inputArgs.Argon_Hash_Mode,
 		}
 
 		binaryStruct := utils.BinaryStruct{
@@ -462,8 +466,14 @@ func main() {
 	encrypt_util.inputArgs = encrypt_util_input
 	encrypt_util.inputArgs.Plain_text_file_name = fileName
 
-	encrypt_util.generateMasterKey()
-	encrypt_util.deriveHmacEncKeys()
+	if !encrypt_util.inputArgs.Argon_Hash_Mode {
+		encrypt_util.generateMasterKey()
+		encrypt_util.deriveHmacEncKeys()
+	} else {
+		fmt.Println("using Argon Mode for KDF")
+		encrypt_util.generateArgonMasterHash()
+		encrypt_util.generateArgonEncHmacHashes()
+	}
 
 	if strings.HasPrefix(encrypt_util.inputArgs.Symmetric_encryption_algorithm, "aes") {
 		encrypt_util.aesEncrypt()

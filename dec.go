@@ -44,11 +44,11 @@ type DecryptUtil struct {
 func (dec *DecryptUtil) getKeySize() int {
 	switch dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm {
 	case "des3-3k-cbc", "des3-3k-cfb":
-		return 192 / (1 << 3)
+		return (192 / (1 << 3)) * 2 // (56 bits + 6 bits parity) * 3
 	case "aes-128-cbc", "aes-128-cfb", "aes-128-gcm":
-		return (1 << 7) / (1 << 3) // aes key size (bits) / 1 byte size (pbkdf2 go requires key in bytes)
+		return ((1 << 7) / (1 << 3)) * 2 // aes key size (bits) / 1 byte size (pbkdf2 go requires key in bytes)
 	case "aes-256-cbc", "aes-256-cfb", "aes-256-gcm":
-		return (1 << 8) / (1 << 3)
+		return ((1 << 8) / (1 << 3)) * 2
 	default:
 		panic("Error the algorithm is not supported by Enc Util")
 	}
@@ -84,7 +84,7 @@ func (dec *DecryptUtil) genRandBytes(bytelength int) []byte {
 	return randBytes
 }
 
-func (dec *DecryptUtil) deriveAeronMasterKey() {
+func (dec *DecryptUtil) deriveArgonMasterKey() {
 	salt := dec.binaryBufferRead.Metadata.Hashing_Salt // keeping this same as aes block size considering the stength to be of (1 << 16)  bits
 	password := utils.GetComplexPassword("decrypt")
 
@@ -93,10 +93,10 @@ func (dec *DecryptUtil) deriveAeronMasterKey() {
 	keyLength := dec.getKeySize()
 
 	masterKey = argon2.Key([]byte(password), salt, 3, 32*(1<<10), uint8(cpuCount), uint32(keyLength))
-	dec.master_key = masterKey
+	dec.master_key = masterKey[:len(masterKey)/2]
 }
 
-func (dec *DecryptUtil) deriveAeronEncHmacKeys() {
+func (dec *DecryptUtil) deriveArgonEncHmacKeys() {
 	saltString_enc := []byte("encrption_fixed_str")
 	saltString_hmac := []byte("hmac_fixed_str")
 
@@ -110,8 +110,8 @@ func (dec *DecryptUtil) deriveAeronEncHmacKeys() {
 	enc_key = argon2.Key(dec.encryption_key,
 		saltString_enc, 3, 3*(1<<10), uint8(cpuCount), uint32(keySize))
 
-	dec.hmac_key = hmac_key
-	dec.encryption_key = enc_key
+	dec.hmac_key = hmac_key[:len(hmac_key)/2]
+	dec.encryption_key = enc_key[:len(enc_key)/2]
 }
 
 func (dec *DecryptUtil) deriveMasterKey() {
@@ -140,7 +140,7 @@ func (dec *DecryptUtil) deriveMasterKey() {
 	if debug {
 		utils.DebugEncodedKey(masterKey)
 	}
-	dec.master_key = masterKey
+	dec.master_key = masterKey[:len(masterKey)/2]
 }
 
 func (dec *DecryptUtil) deriveHmacEncKeys() {
@@ -150,11 +150,11 @@ func (dec *DecryptUtil) deriveHmacEncKeys() {
 	var enc_key []byte
 	switch dec.binaryBufferRead.Metadata.Hashing_algorithm {
 	case "sha256":
-		hmac_key = pbkdf2.Key(dec.master_key, saltString_hmac, 1, len(dec.master_key), sha3.New256)
-		enc_key = pbkdf2.Key(dec.master_key, saltString_enc, 1, len(dec.master_key), sha3.New256)
+		hmac_key = pbkdf2.Key(dec.master_key, saltString_hmac, 1, len(dec.master_key)*2, sha3.New256)
+		enc_key = pbkdf2.Key(dec.master_key, saltString_enc, 1, len(dec.master_key)*2, sha3.New256)
 	case "sha512":
-		hmac_key = pbkdf2.Key(dec.master_key, saltString_hmac, 1, len(dec.master_key), sha3.New512)
-		enc_key = pbkdf2.Key(dec.master_key, saltString_enc, 1, len(dec.master_key), sha3.New512)
+		hmac_key = pbkdf2.Key(dec.master_key, saltString_hmac, 1, len(dec.master_key)*2, sha3.New512)
+		enc_key = pbkdf2.Key(dec.master_key, saltString_enc, 1, len(dec.master_key)*2, sha3.New512)
 	default:
 		fmt.Errorf("Algorithm Not Supported")
 	}
@@ -162,8 +162,8 @@ func (dec *DecryptUtil) deriveHmacEncKeys() {
 		utils.DebugEncodedKey(hmac_key)
 		utils.DebugEncodedKey(enc_key)
 	}
-	dec.hmac_key = hmac_key
-	dec.encryption_key = enc_key
+	dec.hmac_key = hmac_key[:len(hmac_key)/2]
+	dec.encryption_key = enc_key[:len(enc_key)/2]
 }
 
 func (dec *DecryptUtil) validateHmac() bool {
@@ -311,7 +311,7 @@ func (dec *DecryptUtil) aesDecrypt() {
 
 		buffer, err := PKCSUnpad(plaintext)
 		if err != nil {
-			panic(err)
+			panic(err.Error())
 		}
 
 		fmt.Println("Decrypting using AES CBC:: ")
@@ -333,8 +333,15 @@ func main() {
 
 	decryptUtil.readBinary(encrpt_file_name)
 	decryptUtil.debugInputParamsMetadata(&decryptUtil.binaryBufferRead.Metadata)
-	decryptUtil.deriveMasterKey()
-	decryptUtil.deriveHmacEncKeys()
+
+	if !decryptUtil.binaryBufferRead.Metadata.Argon_Hash_Mode {
+		decryptUtil.deriveMasterKey()
+		decryptUtil.deriveHmacEncKeys()
+	} else {
+		fmt.Println("using Argon Mode for KDF")
+		decryptUtil.deriveArgonMasterKey()
+		decryptUtil.deriveArgonEncHmacKeys()
+	}
 
 	if !decryptUtil.validateHmac() {
 		err := "There is message tampering the Hmac coded did not match Error Integrity check broke..."

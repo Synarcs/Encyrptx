@@ -1,6 +1,939 @@
-hello complex password there 
-CTR mode has similar characteristics to OFB, but also allows a random-access property during decryption. CTR mode is well suited to operate on a multi-processor machine, where blocks can be encrypted in parallel. Furthermore, it does not suffer from the short-cycle problem that can affect OFB.[33]
 
-If the IV/nonce is random, then they can be combined with the counter using any invertible operation (concatenation, addition, or XOR) to produce the actual unique counter block for encryption. In case of a non-random nonce (such as a packet counter), the nonce and counter should be concatenated (e.g., storing the nonce in the upper 64 bits and the counter in the lower 64 bits of a 128-bit counter block). Simply adding or XORing the nonce and counter into a single value would break the security under a chosen-plaintext attack in many cases, since the attacker may be able to manipulate the entire IV–counter pair to cause a collision. Once an attacker controls the IV–counter pair and plaintext, XOR of the ciphertext with the known plaintext would yield a value that, when XORed with the ciphertext of the other block sharing the same IV–counter pair, would decrypt that block.[34]
+<!DOCTYPE html>
+<html class="client-nojs vector-feature-language-in-header-enabled vector-feature-language-in-main-page-header-disabled vector-feature-sticky-header-disabled vector-feature-page-tools-pinned-disabled vector-feature-toc-pinned-clientpref-1 vector-feature-main-menu-pinned-disabled vector-feature-limited-width-clientpref-1 vector-feature-limited-width-content-enabled vector-feature-custom-font-size-clientpref-0 vector-feature-client-preferences-disabled vector-feature-client-prefs-pinned-disabled vector-feature-night-mode-disabled skin-theme-clientpref-day vector-toc-available" lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<title>PBKDF2 - Wikipedia</title>
+<script>(function(){var className="client-js vector-feature-language-in-header-enabled vector-feature-language-in-main-page-header-disabled vector-feature-sticky-header-disabled vector-feature-page-tools-pinned-disabled vector-feature-toc-pinned-clientpref-1 vector-feature-main-menu-pinned-disabled vector-feature-limited-width-clientpref-1 vector-feature-limited-width-content-enabled vector-feature-custom-font-size-clientpref-0 vector-feature-client-preferences-disabled vector-feature-client-prefs-pinned-disabled vector-feature-night-mode-disabled skin-theme-clientpref-day vector-toc-available";var cookie=document.cookie.match(/(?:^|; )enwikimwclientpreferences=([^;]+)/);if(cookie){cookie[1].split('%2C').forEach(function(pref){className=className.replace(new RegExp('(^| )'+pref.replace(/-clientpref-\w+$|[^\w-]+/g,'')+'-clientpref-\\w+( |$)'),'$1'+pref+'$2');});}document.documentElement.className=className;}());RLCONF={"wgBreakFrames":false,"wgSeparatorTransformTable":["",""],
+"wgDigitTransformTable":["",""],"wgDefaultDateFormat":"dmy","wgMonthNames":["","January","February","March","April","May","June","July","August","September","October","November","December"],"wgRequestId":"2439b013-4505-4e70-bb21-a2174bd468e8","wgCanonicalNamespace":"","wgCanonicalSpecialPageName":false,"wgNamespaceNumber":0,"wgPageName":"PBKDF2","wgTitle":"PBKDF2","wgCurRevisionId":1209957709,"wgRevisionId":1209957709,"wgArticleId":1568244,"wgIsArticle":true,"wgIsRedirect":false,"wgAction":"view","wgUserName":null,"wgUserGroups":["*"],"wgCategories":["Articles with short description","Short description matches Wikidata","Use mdy dates from May 2022","Password authentication","Cryptography standards","Key derivation functions"],"wgPageViewLanguage":"en","wgPageContentLanguage":"en","wgPageContentModel":"wikitext","wgRelevantPageName":"PBKDF2","wgRelevantArticleId":1568244,"wgIsProbablyEditable":true,"wgRelevantPageIsProbablyEditable":true,"wgRestrictionEdit":[],"wgRestrictionMove":[],
+"wgNoticeProject":"wikipedia","wgFlaggedRevsParams":{"tags":{"status":{"levels":1}}},"wgMediaViewerOnClick":true,"wgMediaViewerEnabledByDefault":true,"wgPopupsFlags":6,"wgVisualEditor":{"pageLanguageCode":"en","pageLanguageDir":"ltr","pageVariantFallbacks":"en"},"wgMFDisplayWikibaseDescriptions":{"search":true,"watchlist":true,"tagline":false,"nearby":true},"wgWMESchemaEditAttemptStepOversample":false,"wgWMEPageLength":10000,"wgULSCurrentAutonym":"English","wgCentralAuthMobileDomain":false,"wgEditSubmitButtonLabelPublish":true,"wgULSPosition":"interlanguage","wgULSisCompactLinksEnabled":false,"wgVector2022LanguageInHeader":true,"wgULSisLanguageSelectorEmpty":false,"wgWikibaseItemId":"Q3952834","wgCheckUserClientHintsHeadersJsApi":["architecture","bitness","brands","fullVersionList","mobile","model","platform","platformVersion"],"GEHomepageSuggestedEditsEnableTopics":true,"wgGETopicsMatchModeEnabled":false,"wgGEStructuredTaskRejectionReasonTextInputEnabled":false,
+"wgGELevelingUpEnabledForUser":false};RLSTATE={"skins.vector.user.styles":"ready","ext.globalCssJs.user.styles":"ready","site.styles":"ready","user.styles":"ready","skins.vector.user":"ready","ext.globalCssJs.user":"ready","user":"ready","user.options":"loading","ext.cite.styles":"ready","skins.vector.search.codex.styles":"ready","skins.vector.styles":"ready","skins.vector.icons":"ready","jquery.makeCollapsible.styles":"ready","ext.visualEditor.desktopArticleTarget.noscript":"ready","ext.uls.interlanguage":"ready","wikibase.client.init":"ready","ext.wikimediaBadges":"ready"};RLPAGEMODULES=["ext.cite.ux-enhancements","mediawiki.page.media","site","mediawiki.page.ready","jquery.makeCollapsible","mediawiki.toc","skins.vector.js","ext.centralNotice.geoIP","ext.centralNotice.startUp","ext.gadget.ReferenceTooltips","ext.gadget.switcher","ext.urlShortener.toolbar","ext.centralauth.centralautologin","mmv.head","mmv.bootstrap.autostart","ext.popups","ext.visualEditor.desktopArticleTarget.init",
+"ext.visualEditor.targetLoader","ext.echo.centralauth","ext.eventLogging","ext.wikimediaEvents","ext.navigationTiming","ext.uls.interface","ext.cx.eventlogging.campaigns","ext.cx.uls.quick.actions","wikibase.client.vector-2022","ext.checkUser.clientHints","ext.growthExperiments.SuggestedEditSession"];</script>
+<script>(RLQ=window.RLQ||[]).push(function(){mw.loader.impl(function(){return["user.options@12s5i",function($,jQuery,require,module){mw.user.tokens.set({"patrolToken":"+\\","watchToken":"+\\","csrfToken":"+\\"});
+}];});});</script>
+<link rel="stylesheet" href="/w/load.php?lang=en&amp;modules=ext.cite.styles%7Cext.uls.interlanguage%7Cext.visualEditor.desktopArticleTarget.noscript%7Cext.wikimediaBadges%7Cjquery.makeCollapsible.styles%7Cskins.vector.icons%2Cstyles%7Cskins.vector.search.codex.styles%7Cwikibase.client.init&amp;only=styles&amp;skin=vector-2022">
+<script async="" src="/w/load.php?lang=en&amp;modules=startup&amp;only=scripts&amp;raw=1&amp;skin=vector-2022"></script>
+<meta name="ResourceLoaderDynamicStyles" content="">
+<link rel="stylesheet" href="/w/load.php?lang=en&amp;modules=site.styles&amp;only=styles&amp;skin=vector-2022">
+<meta name="generator" content="MediaWiki 1.42.0-wmf.25">
+<meta name="referrer" content="origin">
+<meta name="referrer" content="origin-when-cross-origin">
+<meta name="robots" content="max-image-preview:standard">
+<meta name="format-detection" content="telephone=no">
+<meta name="viewport" content="width=1000">
+<meta property="og:title" content="PBKDF2 - Wikipedia">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="//upload.wikimedia.org">
+<link rel="alternate" media="only screen and (max-width: 720px)" href="//en.m.wikipedia.org/wiki/PBKDF2">
+<link rel="alternate" type="application/x-wiki" title="Edit this page" href="/w/index.php?title=PBKDF2&amp;action=edit">
+<link rel="apple-touch-icon" href="/static/apple-touch/wikipedia.png">
+<link rel="icon" href="/static/favicon/wikipedia.ico">
+<link rel="search" type="application/opensearchdescription+xml" href="/w/opensearch_desc.php" title="Wikipedia (en)">
+<link rel="EditURI" type="application/rsd+xml" href="//en.wikipedia.org/w/api.php?action=rsd">
+<link rel="canonical" href="https://en.wikipedia.org/wiki/PBKDF2">
+<link rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/deed.en">
+<link rel="alternate" type="application/atom+xml" title="Wikipedia Atom feed" href="/w/index.php?title=Special:RecentChanges&amp;feed=atom">
+<link rel="dns-prefetch" href="//meta.wikimedia.org" />
+<link rel="dns-prefetch" href="//login.wikimedia.org">
+</head>
+<body class="skin-vector skin-vector-search-vue mediawiki ltr sitedir-ltr mw-hide-empty-elt ns-0 ns-subject mw-editable page-PBKDF2 rootpage-PBKDF2 skin-vector-2022 action-view"><a class="mw-jump-link" href="#bodyContent">Jump to content</a>
+<div class="vector-header-container">
+	<header class="vector-header mw-header">
+		<div class="vector-header-start">
+			<nav class="vector-main-menu-landmark" aria-label="Site" role="navigation">
+				
+<div id="vector-main-menu-dropdown" class="vector-dropdown vector-main-menu-dropdown vector-button-flush-left vector-button-flush-right"  >
+	<input type="checkbox" id="vector-main-menu-dropdown-checkbox" role="button" aria-haspopup="true" data-event-name="ui.dropdown-vector-main-menu-dropdown" class="vector-dropdown-checkbox "  aria-label="Main menu"  >
+	<label id="vector-main-menu-dropdown-label" for="vector-main-menu-dropdown-checkbox" class="vector-dropdown-label cdx-button cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--weight-quiet cdx-button--icon-only " aria-hidden="true"  ><span class="vector-icon mw-ui-icon-menu mw-ui-icon-wikimedia-menu"></span>
 
-Note that the nonce in this diagram is equivalent to the initialization vector (IV) in the other diagrams. However, if the offset/location information is corrupt, it will be impossible to partially recover such data due to the dependence on byte offset.
+<span class="vector-dropdown-label-text">Main menu</span>
+	</label>
+	<div class="vector-dropdown-content">
+
+
+				<div id="vector-main-menu-unpinned-container" class="vector-unpinned-container">
+		
+<div id="vector-main-menu" class="vector-main-menu vector-pinnable-element">
+	<div
+	class="vector-pinnable-header vector-main-menu-pinnable-header vector-pinnable-header-unpinned"
+	data-feature-name="main-menu-pinned"
+	data-pinnable-element-id="vector-main-menu"
+	data-pinned-container-id="vector-main-menu-pinned-container"
+	data-unpinned-container-id="vector-main-menu-unpinned-container"
+>
+	<div class="vector-pinnable-header-label">Main menu</div>
+	<button class="vector-pinnable-header-toggle-button vector-pinnable-header-pin-button" data-event-name="pinnable-header.vector-main-menu.pin">move to sidebar</button>
+	<button class="vector-pinnable-header-toggle-button vector-pinnable-header-unpin-button" data-event-name="pinnable-header.vector-main-menu.unpin">hide</button>
+</div>
+
+	
+<div id="p-navigation" class="vector-menu mw-portlet mw-portlet-navigation"  >
+	<div class="vector-menu-heading">
+		Navigation
+	</div>
+	<div class="vector-menu-content">
+		
+		<ul class="vector-menu-content-list">
+			
+			<li id="n-mainpage-description" class="mw-list-item"><a href="/wiki/Main_Page" title="Visit the main page [z]" accesskey="z"><span>Main page</span></a></li><li id="n-contents" class="mw-list-item"><a href="/wiki/Wikipedia:Contents" title="Guides to browsing Wikipedia"><span>Contents</span></a></li><li id="n-currentevents" class="mw-list-item"><a href="/wiki/Portal:Current_events" title="Articles related to current events"><span>Current events</span></a></li><li id="n-randompage" class="mw-list-item"><a href="/wiki/Special:Random" title="Visit a randomly selected article [x]" accesskey="x"><span>Random article</span></a></li><li id="n-aboutsite" class="mw-list-item"><a href="/wiki/Wikipedia:About" title="Learn about Wikipedia and how it works"><span>About Wikipedia</span></a></li><li id="n-contactpage" class="mw-list-item"><a href="//en.wikipedia.org/wiki/Wikipedia:Contact_us" title="How to contact Wikipedia"><span>Contact us</span></a></li><li id="n-sitesupport" class="mw-list-item"><a href="https://donate.wikimedia.org/wiki/Special:FundraiserRedirector?utm_source=donate&amp;utm_medium=sidebar&amp;utm_campaign=C13_en.wikipedia.org&amp;uselang=en" title="Support us by donating to the Wikimedia Foundation"><span>Donate</span></a></li>
+		</ul>
+		
+	</div>
+</div>
+
+	
+	
+<div id="p-interaction" class="vector-menu mw-portlet mw-portlet-interaction"  >
+	<div class="vector-menu-heading">
+		Contribute
+	</div>
+	<div class="vector-menu-content">
+		
+		<ul class="vector-menu-content-list">
+			
+			<li id="n-help" class="mw-list-item"><a href="/wiki/Help:Contents" title="Guidance on how to use and edit Wikipedia"><span>Help</span></a></li><li id="n-introduction" class="mw-list-item"><a href="/wiki/Help:Introduction" title="Learn how to edit Wikipedia"><span>Learn to edit</span></a></li><li id="n-portal" class="mw-list-item"><a href="/wiki/Wikipedia:Community_portal" title="The hub for editors"><span>Community portal</span></a></li><li id="n-recentchanges" class="mw-list-item"><a href="/wiki/Special:RecentChanges" title="A list of recent changes to Wikipedia [r]" accesskey="r"><span>Recent changes</span></a></li><li id="n-upload" class="mw-list-item"><a href="/wiki/Wikipedia:File_upload_wizard" title="Add images or other media for use on Wikipedia"><span>Upload file</span></a></li>
+		</ul>
+		
+	</div>
+</div>
+
+</div>
+
+				</div>
+
+	</div>
+</div>
+
+		</nav>
+			
+<a href="/wiki/Main_Page" class="mw-logo">
+	<img class="mw-logo-icon" src="/static/images/icons/wikipedia.png" alt="" aria-hidden="true" height="50" width="50">
+	<span class="mw-logo-container">
+		<img class="mw-logo-wordmark" alt="Wikipedia" src="/static/images/mobile/copyright/wikipedia-wordmark-en.svg" style="width: 7.5em; height: 1.125em;">
+		<img class="mw-logo-tagline" alt="The Free Encyclopedia" src="/static/images/mobile/copyright/wikipedia-tagline-en.svg" width="117" height="13" style="width: 7.3125em; height: 0.8125em;">
+	</span>
+</a>
+
+		</div>
+		<div class="vector-header-end">
+			
+<div id="p-search" role="search" class="vector-search-box-vue  vector-search-box-collapses vector-search-box-show-thumbnail vector-search-box-auto-expand-width vector-search-box">
+	<a href="/wiki/Special:Search" class="cdx-button cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--weight-quiet cdx-button--icon-only search-toggle" id="" title="Search Wikipedia [f]" accesskey="f"><span class="vector-icon mw-ui-icon-search mw-ui-icon-wikimedia-search"></span>
+
+<span>Search</span>
+	</a>
+	<div class="vector-typeahead-search-container">
+		<div class="cdx-typeahead-search cdx-typeahead-search--show-thumbnail cdx-typeahead-search--auto-expand-width">
+			<form action="/w/index.php" id="searchform" class="cdx-search-input cdx-search-input--has-end-button">
+				<div id="simpleSearch" class="cdx-search-input__input-wrapper"  data-search-loc="header-moved">
+					<div class="cdx-text-input cdx-text-input--has-start-icon">
+						<input
+							class="cdx-text-input__input"
+							 type="search" name="search" placeholder="Search Wikipedia" aria-label="Search Wikipedia" autocapitalize="sentences" title="Search Wikipedia [f]" accesskey="f" id="searchInput"
+							>
+						<span class="cdx-text-input__icon cdx-text-input__start-icon"></span>
+					</div>
+					<input type="hidden" name="title" value="Special:Search">
+				</div>
+				<button class="cdx-button cdx-search-input__end-button">Search</button>
+			</form>
+		</div>
+	</div>
+</div>
+
+			<nav class="vector-user-links vector-user-links-wide" aria-label="Personal tools" role="navigation" >
+	<div class="vector-user-links-main">
+	
+<div id="p-vector-user-menu-preferences" class="vector-menu mw-portlet emptyPortlet"  >
+	<div class="vector-menu-content">
+		
+		<ul class="vector-menu-content-list">
+			
+			
+		</ul>
+		
+	</div>
+</div>
+
+	
+<div id="p-vector-user-menu-userpage" class="vector-menu mw-portlet emptyPortlet"  >
+	<div class="vector-menu-content">
+		
+		<ul class="vector-menu-content-list">
+			
+			
+		</ul>
+		
+	</div>
+</div>
+
+	<nav class="vector-client-prefs-landmark" aria-label="Appearance">
+		
+		
+	</nav>
+	
+<div id="p-vector-user-menu-notifications" class="vector-menu mw-portlet emptyPortlet"  >
+	<div class="vector-menu-content">
+		
+		<ul class="vector-menu-content-list">
+			
+			
+		</ul>
+		
+	</div>
+</div>
+
+	
+<div id="p-vector-user-menu-overflow" class="vector-menu mw-portlet"  >
+	<div class="vector-menu-content">
+		
+		<ul class="vector-menu-content-list">
+			<li id="pt-createaccount-2" class="user-links-collapsible-item mw-list-item user-links-collapsible-item"><a data-mw="interface" href="/w/index.php?title=Special:CreateAccount&amp;returnto=PBKDF2" title="You are encouraged to create an account and log in; however, it is not mandatory" class=""><span>Create account</span></a>
+</li>
+<li id="pt-login-2" class="user-links-collapsible-item mw-list-item user-links-collapsible-item"><a data-mw="interface" href="/w/index.php?title=Special:UserLogin&amp;returnto=PBKDF2" title="You&#039;re encouraged to log in; however, it&#039;s not mandatory. [o]" accesskey="o" class=""><span>Log in</span></a>
+</li>
+
+			
+		</ul>
+		
+	</div>
+</div>
+
+	</div>
+	
+<div id="vector-user-links-dropdown" class="vector-dropdown vector-user-menu vector-button-flush-right vector-user-menu-logged-out"  title="Log in and more options" >
+	<input type="checkbox" id="vector-user-links-dropdown-checkbox" role="button" aria-haspopup="true" data-event-name="ui.dropdown-vector-user-links-dropdown" class="vector-dropdown-checkbox "  aria-label="Personal tools"  >
+	<label id="vector-user-links-dropdown-label" for="vector-user-links-dropdown-checkbox" class="vector-dropdown-label cdx-button cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--weight-quiet cdx-button--icon-only " aria-hidden="true"  ><span class="vector-icon mw-ui-icon-ellipsis mw-ui-icon-wikimedia-ellipsis"></span>
+
+<span class="vector-dropdown-label-text">Personal tools</span>
+	</label>
+	<div class="vector-dropdown-content">
+
+
+		
+<div id="p-personal" class="vector-menu mw-portlet mw-portlet-personal user-links-collapsible-item"  title="User menu" >
+	<div class="vector-menu-content">
+		
+		<ul class="vector-menu-content-list">
+			
+			<li id="pt-createaccount" class="user-links-collapsible-item mw-list-item"><a href="/w/index.php?title=Special:CreateAccount&amp;returnto=PBKDF2" title="You are encouraged to create an account and log in; however, it is not mandatory"><span class="vector-icon mw-ui-icon-userAdd mw-ui-icon-wikimedia-userAdd"></span> <span>Create account</span></a></li><li id="pt-login" class="user-links-collapsible-item mw-list-item"><a href="/w/index.php?title=Special:UserLogin&amp;returnto=PBKDF2" title="You&#039;re encouraged to log in; however, it&#039;s not mandatory. [o]" accesskey="o"><span class="vector-icon mw-ui-icon-logIn mw-ui-icon-wikimedia-logIn"></span> <span>Log in</span></a></li>
+		</ul>
+		
+	</div>
+</div>
+
+<div id="p-user-menu-anon-editor" class="vector-menu mw-portlet mw-portlet-user-menu-anon-editor"  >
+	<div class="vector-menu-heading">
+		Pages for logged out editors <a href="/wiki/Help:Introduction" aria-label="Learn more about editing"><span>learn more</span></a>
+	</div>
+	<div class="vector-menu-content">
+		
+		<ul class="vector-menu-content-list">
+			
+			<li id="pt-anoncontribs" class="mw-list-item"><a href="/wiki/Special:MyContributions" title="A list of edits made from this IP address [y]" accesskey="y"><span>Contributions</span></a></li><li id="pt-anontalk" class="mw-list-item"><a href="/wiki/Special:MyTalk" title="Discussion about edits from this IP address [n]" accesskey="n"><span>Talk</span></a></li>
+		</ul>
+		
+	</div>
+</div>
+
+	
+	</div>
+</div>
+
+</nav>
+
+		</div>
+	</header>
+</div>
+<div class="mw-page-container">
+	<div class="mw-page-container-inner">
+		<div class="vector-sitenotice-container">
+			<div id="siteNotice"><!-- CentralNotice --></div>
+		</div>
+		<div class="vector-column-start">
+			<div class="vector-main-menu-container">
+		<div id="mw-navigation">
+			<nav id="mw-panel" class="vector-main-menu-landmark" aria-label="Site" role="navigation">
+				<div id="vector-main-menu-pinned-container" class="vector-pinned-container">
+				
+				</div>
+		</nav>
+		</div>
+	</div>
+	<div class="vector-sticky-pinned-container">
+				<nav id="mw-panel-toc" role="navigation" aria-label="Contents" data-event-name="ui.sidebar-toc" class="mw-table-of-contents-container vector-toc-landmark">
+					<div id="vector-toc-pinned-container" class="vector-pinned-container">
+					<div id="vector-toc" class="vector-toc vector-pinnable-element">
+	<div
+	class="vector-pinnable-header vector-toc-pinnable-header vector-pinnable-header-pinned"
+	data-feature-name="toc-pinned"
+	data-pinnable-element-id="vector-toc"
+	
+	
+>
+	<h2 class="vector-pinnable-header-label">Contents</h2>
+	<button class="vector-pinnable-header-toggle-button vector-pinnable-header-pin-button" data-event-name="pinnable-header.vector-toc.pin">move to sidebar</button>
+	<button class="vector-pinnable-header-toggle-button vector-pinnable-header-unpin-button" data-event-name="pinnable-header.vector-toc.unpin">hide</button>
+</div>
+
+
+	<ul class="vector-toc-contents" id="mw-panel-toc-list">
+		<li id="toc-mw-content-text"
+			class="vector-toc-list-item vector-toc-level-1">
+			<a href="#" class="vector-toc-link">
+				<div class="vector-toc-text">(Top)</div>
+			</a>
+		</li>
+		<li id="toc-Purpose_and_operation"
+		class="vector-toc-list-item vector-toc-level-1 vector-toc-list-item-expanded">
+		<a class="vector-toc-link" href="#Purpose_and_operation">
+			<div class="vector-toc-text">
+			<span class="vector-toc-numb">1</span>Purpose and operation</div>
+		</a>
+		
+		<ul id="toc-Purpose_and_operation-sublist" class="vector-toc-list">
+		</ul>
+	</li>
+	<li id="toc-Key_derivation_process"
+		class="vector-toc-list-item vector-toc-level-1 vector-toc-list-item-expanded">
+		<a class="vector-toc-link" href="#Key_derivation_process">
+			<div class="vector-toc-text">
+			<span class="vector-toc-numb">2</span>Key derivation process</div>
+		</a>
+		
+		<ul id="toc-Key_derivation_process-sublist" class="vector-toc-list">
+		</ul>
+	</li>
+	<li id="toc-HMAC_collisions"
+		class="vector-toc-list-item vector-toc-level-1 vector-toc-list-item-expanded">
+		<a class="vector-toc-link" href="#HMAC_collisions">
+			<div class="vector-toc-text">
+			<span class="vector-toc-numb">3</span>HMAC collisions</div>
+		</a>
+		
+		<ul id="toc-HMAC_collisions-sublist" class="vector-toc-list">
+		</ul>
+	</li>
+	<li id="toc-Alternatives_to_PBKDF2"
+		class="vector-toc-list-item vector-toc-level-1 vector-toc-list-item-expanded">
+		<a class="vector-toc-link" href="#Alternatives_to_PBKDF2">
+			<div class="vector-toc-text">
+			<span class="vector-toc-numb">4</span>Alternatives to PBKDF2</div>
+		</a>
+		
+		<ul id="toc-Alternatives_to_PBKDF2-sublist" class="vector-toc-list">
+		</ul>
+	</li>
+	<li id="toc-See_also"
+		class="vector-toc-list-item vector-toc-level-1 vector-toc-list-item-expanded">
+		<a class="vector-toc-link" href="#See_also">
+			<div class="vector-toc-text">
+			<span class="vector-toc-numb">5</span>See also</div>
+		</a>
+		
+		<ul id="toc-See_also-sublist" class="vector-toc-list">
+		</ul>
+	</li>
+	<li id="toc-References"
+		class="vector-toc-list-item vector-toc-level-1 vector-toc-list-item-expanded">
+		<a class="vector-toc-link" href="#References">
+			<div class="vector-toc-text">
+			<span class="vector-toc-numb">6</span>References</div>
+		</a>
+		
+		<ul id="toc-References-sublist" class="vector-toc-list">
+		</ul>
+	</li>
+	<li id="toc-External_links"
+		class="vector-toc-list-item vector-toc-level-1 vector-toc-list-item-expanded">
+		<a class="vector-toc-link" href="#External_links">
+			<div class="vector-toc-text">
+			<span class="vector-toc-numb">7</span>External links</div>
+		</a>
+		
+		<ul id="toc-External_links-sublist" class="vector-toc-list">
+		</ul>
+	</li>
+</ul>
+</div>
+
+					</div>
+		</nav>
+			</div>
+		</div>
+		<div class="mw-content-container">
+			<main id="content" class="mw-body" role="main">
+				<header class="mw-body-header vector-page-titlebar">
+					<nav role="navigation" aria-label="Contents" class="vector-toc-landmark">
+						
+<div id="vector-page-titlebar-toc" class="vector-dropdown vector-page-titlebar-toc vector-button-flush-left"  >
+	<input type="checkbox" id="vector-page-titlebar-toc-checkbox" role="button" aria-haspopup="true" data-event-name="ui.dropdown-vector-page-titlebar-toc" class="vector-dropdown-checkbox "  aria-label="Toggle the table of contents"  >
+	<label id="vector-page-titlebar-toc-label" for="vector-page-titlebar-toc-checkbox" class="vector-dropdown-label cdx-button cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--weight-quiet cdx-button--icon-only " aria-hidden="true"  ><span class="vector-icon mw-ui-icon-listBullet mw-ui-icon-wikimedia-listBullet"></span>
+
+<span class="vector-dropdown-label-text">Toggle the table of contents</span>
+	</label>
+	<div class="vector-dropdown-content">
+
+
+							<div id="vector-page-titlebar-toc-unpinned-container" class="vector-unpinned-container">
+			</div>
+		
+	</div>
+</div>
+
+					</nav>
+					<h1 id="firstHeading" class="firstHeading mw-first-heading"><span class="mw-page-title-main">PBKDF2</span></h1>
+							
+<div id="p-lang-btn" class="vector-dropdown mw-portlet mw-portlet-lang"  >
+	<input type="checkbox" id="p-lang-btn-checkbox" role="button" aria-haspopup="true" data-event-name="ui.dropdown-p-lang-btn" class="vector-dropdown-checkbox mw-interlanguage-selector" aria-label="Go to an article in another language. Available in 9 languages"   >
+	<label id="p-lang-btn-label" for="p-lang-btn-checkbox" class="vector-dropdown-label cdx-button cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--weight-quiet cdx-button--action-progressive mw-portlet-lang-heading-9" aria-hidden="true"  ><span class="vector-icon mw-ui-icon-language-progressive mw-ui-icon-wikimedia-language-progressive"></span>
+
+<span class="vector-dropdown-label-text">9 languages</span>
+	</label>
+	<div class="vector-dropdown-content">
+
+		<div class="vector-menu-content">
+			
+			<ul class="vector-menu-content-list">
+				
+				<li class="interlanguage-link interwiki-cs mw-list-item"><a href="https://cs.wikipedia.org/wiki/PBKDF2" title="PBKDF2 – Czech" lang="cs" hreflang="cs" class="interlanguage-link-target"><span>Čeština</span></a></li><li class="interlanguage-link interwiki-de mw-list-item"><a href="https://de.wikipedia.org/wiki/PBKDF2" title="PBKDF2 – German" lang="de" hreflang="de" class="interlanguage-link-target"><span>Deutsch</span></a></li><li class="interlanguage-link interwiki-fr mw-list-item"><a href="https://fr.wikipedia.org/wiki/PBKDF2" title="PBKDF2 – French" lang="fr" hreflang="fr" class="interlanguage-link-target"><span>Français</span></a></li><li class="interlanguage-link interwiki-ko mw-list-item"><a href="https://ko.wikipedia.org/wiki/PBKDF2" title="PBKDF2 – Korean" lang="ko" hreflang="ko" class="interlanguage-link-target"><span>한국어</span></a></li><li class="interlanguage-link interwiki-ja mw-list-item"><a href="https://ja.wikipedia.org/wiki/PBKDF2" title="PBKDF2 – Japanese" lang="ja" hreflang="ja" class="interlanguage-link-target"><span>日本語</span></a></li><li class="interlanguage-link interwiki-ru badge-Q17559452 badge-recommendedarticle mw-list-item" title="recommended article"><a href="https://ru.wikipedia.org/wiki/PBKDF2" title="PBKDF2 – Russian" lang="ru" hreflang="ru" class="interlanguage-link-target"><span>Русский</span></a></li><li class="interlanguage-link interwiki-tr mw-list-item"><a href="https://tr.wikipedia.org/wiki/PBKDF2" title="PBKDF2 – Turkish" lang="tr" hreflang="tr" class="interlanguage-link-target"><span>Türkçe</span></a></li><li class="interlanguage-link interwiki-uk mw-list-item"><a href="https://uk.wikipedia.org/wiki/PBKDF2" title="PBKDF2 – Ukrainian" lang="uk" hreflang="uk" class="interlanguage-link-target"><span>Українська</span></a></li><li class="interlanguage-link interwiki-zh mw-list-item"><a href="https://zh.wikipedia.org/wiki/PBKDF2" title="PBKDF2 – Chinese" lang="zh" hreflang="zh" class="interlanguage-link-target"><span>中文</span></a></li>
+			</ul>
+			<div class="after-portlet after-portlet-lang"><span class="wb-langlinks-edit wb-langlinks-link"><a href="https://www.wikidata.org/wiki/Special:EntityPage/Q3952834#sitelinks-wikipedia" title="Edit interlanguage links" class="wbc-editpage">Edit links</a></span></div>
+		</div>
+
+	</div>
+</div>
+</header>
+				<div class="vector-page-toolbar">
+					<div class="vector-page-toolbar-container">
+						<div id="left-navigation">
+							<nav aria-label="Namespaces">
+								
+<div id="p-associated-pages" class="vector-menu vector-menu-tabs mw-portlet mw-portlet-associated-pages"  >
+	<div class="vector-menu-content">
+		
+		<ul class="vector-menu-content-list">
+			
+			<li id="ca-nstab-main" class="selected vector-tab-noicon mw-list-item"><a href="/wiki/PBKDF2" title="View the content page [c]" accesskey="c"><span>Article</span></a></li><li id="ca-talk" class="vector-tab-noicon mw-list-item"><a href="/wiki/Talk:PBKDF2" rel="discussion" title="Discuss improvements to the content page [t]" accesskey="t"><span>Talk</span></a></li>
+		</ul>
+		
+	</div>
+</div>
+
+								
+<div id="p-variants" class="vector-dropdown emptyPortlet"  >
+	<input type="checkbox" id="p-variants-checkbox" role="button" aria-haspopup="true" data-event-name="ui.dropdown-p-variants" class="vector-dropdown-checkbox " aria-label="Change language variant"   >
+	<label id="p-variants-label" for="p-variants-checkbox" class="vector-dropdown-label cdx-button cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--weight-quiet" aria-hidden="true"  ><span class="vector-dropdown-label-text">English</span>
+	</label>
+	<div class="vector-dropdown-content">
+
+
+					
+<div id="p-variants" class="vector-menu mw-portlet mw-portlet-variants emptyPortlet"  >
+	<div class="vector-menu-content">
+		
+		<ul class="vector-menu-content-list">
+			
+			
+		</ul>
+		
+	</div>
+</div>
+
+				
+	</div>
+</div>
+
+							</nav>
+						</div>
+						<div id="right-navigation" class="vector-collapsible">
+							<nav aria-label="Views">
+								
+<div id="p-views" class="vector-menu vector-menu-tabs mw-portlet mw-portlet-views"  >
+	<div class="vector-menu-content">
+		
+		<ul class="vector-menu-content-list">
+			
+			<li id="ca-view" class="selected vector-tab-noicon mw-list-item"><a href="/wiki/PBKDF2"><span>Read</span></a></li><li id="ca-edit" class="vector-tab-noicon mw-list-item"><a href="/w/index.php?title=PBKDF2&amp;action=edit" title="Edit this page [e]" accesskey="e"><span>Edit</span></a></li><li id="ca-history" class="vector-tab-noicon mw-list-item"><a href="/w/index.php?title=PBKDF2&amp;action=history" title="Past revisions of this page [h]" accesskey="h"><span>View history</span></a></li>
+		</ul>
+		
+	</div>
+</div>
+
+							</nav>
+				
+							<nav class="vector-page-tools-landmark" aria-label="Page tools">
+								
+<div id="vector-page-tools-dropdown" class="vector-dropdown vector-page-tools-dropdown"  >
+	<input type="checkbox" id="vector-page-tools-dropdown-checkbox" role="button" aria-haspopup="true" data-event-name="ui.dropdown-vector-page-tools-dropdown" class="vector-dropdown-checkbox "  aria-label="Tools"  >
+	<label id="vector-page-tools-dropdown-label" for="vector-page-tools-dropdown-checkbox" class="vector-dropdown-label cdx-button cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--weight-quiet" aria-hidden="true"  ><span class="vector-dropdown-label-text">Tools</span>
+	</label>
+	<div class="vector-dropdown-content">
+
+
+									<div id="vector-page-tools-unpinned-container" class="vector-unpinned-container">
+						
+<div id="vector-page-tools" class="vector-page-tools vector-pinnable-element">
+	<div
+	class="vector-pinnable-header vector-page-tools-pinnable-header vector-pinnable-header-unpinned"
+	data-feature-name="page-tools-pinned"
+	data-pinnable-element-id="vector-page-tools"
+	data-pinned-container-id="vector-page-tools-pinned-container"
+	data-unpinned-container-id="vector-page-tools-unpinned-container"
+>
+	<div class="vector-pinnable-header-label">Tools</div>
+	<button class="vector-pinnable-header-toggle-button vector-pinnable-header-pin-button" data-event-name="pinnable-header.vector-page-tools.pin">move to sidebar</button>
+	<button class="vector-pinnable-header-toggle-button vector-pinnable-header-unpin-button" data-event-name="pinnable-header.vector-page-tools.unpin">hide</button>
+</div>
+
+	
+<div id="p-cactions" class="vector-menu mw-portlet mw-portlet-cactions emptyPortlet vector-has-collapsible-items"  title="More options" >
+	<div class="vector-menu-heading">
+		Actions
+	</div>
+	<div class="vector-menu-content">
+		
+		<ul class="vector-menu-content-list">
+			
+			<li id="ca-more-view" class="selected vector-more-collapsible-item mw-list-item"><a href="/wiki/PBKDF2"><span>Read</span></a></li><li id="ca-more-edit" class="vector-more-collapsible-item mw-list-item"><a href="/w/index.php?title=PBKDF2&amp;action=edit" title="Edit this page [e]" accesskey="e"><span>Edit</span></a></li><li id="ca-more-history" class="vector-more-collapsible-item mw-list-item"><a href="/w/index.php?title=PBKDF2&amp;action=history"><span>View history</span></a></li>
+		</ul>
+		
+	</div>
+</div>
+
+<div id="p-tb" class="vector-menu mw-portlet mw-portlet-tb"  >
+	<div class="vector-menu-heading">
+		General
+	</div>
+	<div class="vector-menu-content">
+		
+		<ul class="vector-menu-content-list">
+			
+			<li id="t-whatlinkshere" class="mw-list-item"><a href="/wiki/Special:WhatLinksHere/PBKDF2" title="List of all English Wikipedia pages containing links to this page [j]" accesskey="j"><span>What links here</span></a></li><li id="t-recentchangeslinked" class="mw-list-item"><a href="/wiki/Special:RecentChangesLinked/PBKDF2" rel="nofollow" title="Recent changes in pages linked from this page [k]" accesskey="k"><span>Related changes</span></a></li><li id="t-upload" class="mw-list-item"><a href="/wiki/Wikipedia:File_Upload_Wizard" title="Upload files [u]" accesskey="u"><span>Upload file</span></a></li><li id="t-specialpages" class="mw-list-item"><a href="/wiki/Special:SpecialPages" title="A list of all special pages [q]" accesskey="q"><span>Special pages</span></a></li><li id="t-permalink" class="mw-list-item"><a href="/w/index.php?title=PBKDF2&amp;oldid=1209957709" title="Permanent link to this revision of this page"><span>Permanent link</span></a></li><li id="t-info" class="mw-list-item"><a href="/w/index.php?title=PBKDF2&amp;action=info" title="More information about this page"><span>Page information</span></a></li><li id="t-cite" class="mw-list-item"><a href="/w/index.php?title=Special:CiteThisPage&amp;page=PBKDF2&amp;id=1209957709&amp;wpFormIdentifier=titleform" title="Information on how to cite this page"><span>Cite this page</span></a></li><li id="t-urlshortener" class="mw-list-item"><a href="/w/index.php?title=Special:UrlShortener&amp;url=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FPBKDF2"><span>Get shortened URL</span></a></li><li id="t-urlshortener-qrcode" class="mw-list-item"><a href="/w/index.php?title=Special:QrCode&amp;url=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FPBKDF2"><span>Download QR code</span></a></li><li id="t-wikibase" class="mw-list-item"><a href="https://www.wikidata.org/wiki/Special:EntityPage/Q3952834" title="Structured data on this page hosted by Wikidata [g]" accesskey="g"><span>Wikidata item</span></a></li>
+		</ul>
+		
+	</div>
+</div>
+
+<div id="p-coll-print_export" class="vector-menu mw-portlet mw-portlet-coll-print_export"  >
+	<div class="vector-menu-heading">
+		Print/export
+	</div>
+	<div class="vector-menu-content">
+		
+		<ul class="vector-menu-content-list">
+			
+			<li id="coll-download-as-rl" class="mw-list-item"><a href="/w/index.php?title=Special:DownloadAsPdf&amp;page=PBKDF2&amp;action=show-download-screen" title="Download this page as a PDF file"><span>Download as PDF</span></a></li><li id="t-print" class="mw-list-item"><a href="/w/index.php?title=PBKDF2&amp;printable=yes" title="Printable version of this page [p]" accesskey="p"><span>Printable version</span></a></li>
+		</ul>
+		
+	</div>
+</div>
+
+</div>
+
+									</div>
+				
+	</div>
+</div>
+
+							</nav>
+						</div>
+					</div>
+				</div>
+				<div class="vector-column-end">
+					<div class="vector-sticky-pinned-container">
+						<nav class="vector-page-tools-landmark" aria-label="Page tools">
+							<div id="vector-page-tools-pinned-container" class="vector-pinned-container">
+				
+							</div>
+		</nav>
+						<nav class="vector-client-prefs-landmark" aria-label="Appearance">
+						</nav>
+					</div>
+				</div>
+				<div id="bodyContent" class="vector-body" aria-labelledby="firstHeading" data-mw-ve-target-container>
+					<div class="vector-body-before-content">
+							<div class="mw-indicators">
+		</div>
+
+						<div id="siteSub" class="noprint">From Wikipedia, the free encyclopedia</div>
+					</div>
+					<div id="contentSub"><div id="mw-content-subtitle"></div></div>
+					
+					
+					<div id="mw-content-text" class="mw-body-content"><div class="mw-content-ltr mw-parser-output" lang="en" dir="ltr"><div class="shortdescription nomobile noexcerpt noprint searchaux" style="display:none">Standard for a password-based key derivation function</div>
+<p class="mw-empty-elt">
+</p><p>In <a href="/wiki/Cryptography" title="Cryptography">cryptography</a>, <b>PBKDF1</b> and <b>PBKDF2</b> (<b>Password-Based Key Derivation Function 1</b> and <b>2</b>) are <a href="/wiki/Key_derivation_function" title="Key derivation function">key derivation functions</a> with a sliding computational cost, used to reduce vulnerability to <a href="/wiki/Brute-force_attack" title="Brute-force attack">brute-force attacks</a>.<sup id="cite_ref-&#82;FC3962_1-0" class="reference"><a href="#cite_note-RFC3962-1">&#91;1&#93;</a></sup>
+</p><p>PBKDF2 is part of <a href="/wiki/RSA_Laboratories" class="mw-redirect" title="RSA Laboratories">RSA Laboratories</a>' <a href="/wiki/Public-Key_Cryptography_Standards" class="mw-redirect" title="Public-Key Cryptography Standards">Public-Key Cryptography Standards</a> (PKCS) series, specifically PKCS<span class="nowrap">&#160;</span>#5 v2.0, also published as <a href="/wiki/Internet_Engineering_Task_Force" title="Internet Engineering Task Force">Internet Engineering Task Force</a>'s RFC<span class="nowrap">&#160;</span>2898. It supersedes PBKDF1, which could only produce derived keys up to 160 bits long.<sup id="cite_ref-2" class="reference"><a href="#cite_note-2">&#91;2&#93;</a></sup> RFC<span class="nowrap">&#160;</span>8018 (PKCS<span class="nowrap">&#160;</span>#5 v2.1), published in 2017, recommends PBKDF2 for password hashing.<sup id="cite_ref-3" class="reference"><a href="#cite_note-3">&#91;3&#93;</a></sup>
+</p>
+<meta property="mw:PageProp/toc" />
+<h2><span class="mw-headline" id="Purpose_and_operation">Purpose and operation</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/w/index.php?title=PBKDF2&amp;action=edit&amp;section=1" title="Edit section: Purpose and operation"><span>edit</span></a><span class="mw-editsection-bracket">]</span></span></h2>
+<p>PBKDF2 applies a <a href="/wiki/Pseudorandom_function" class="mw-redirect" title="Pseudorandom function">pseudorandom function</a>, such as <a href="/wiki/Hash-based_message_authentication_code" class="mw-redirect" title="Hash-based message authentication code">hash-based message authentication code</a> (HMAC), to the input <a href="/wiki/Password" title="Password">password</a> or <a href="/wiki/Passphrase" title="Passphrase">passphrase</a> along with a <a href="/wiki/Salt_(cryptography)" title="Salt (cryptography)">salt</a> value and repeats the process many times to produce a <i>derived key</i>, which can then be used as a <a href="/wiki/Key_(cryptography)" title="Key (cryptography)">cryptographic key</a> in subsequent operations.  The added computational work makes <a href="/wiki/Password_cracking" title="Password cracking">password cracking</a> much more difficult, and is known as <a href="/wiki/Key_stretching" title="Key stretching">key stretching</a>.
+</p><p>When the standard was written in the year 2000 the recommended minimum number of iterations was 1,000, but the parameter is intended to be increased over time as CPU speeds increase. A <a href="/wiki/Kerberos_(protocol)" title="Kerberos (protocol)">Kerberos</a> standard in 2005 recommended 4,096 iterations;<sup id="cite_ref-&#82;FC3962_1-1" class="reference"><a href="#cite_note-RFC3962-1">&#91;1&#93;</a></sup> <a href="/wiki/Apple_Inc." title="Apple Inc.">Apple</a> reportedly used 2,000 for <a href="/wiki/IOS_3" class="mw-redirect" title="IOS 3">iOS 3</a>, and 10,000 for <a href="/wiki/IOS_4" title="IOS 4">iOS 4</a>;<sup id="cite_ref-4" class="reference"><a href="#cite_note-4">&#91;4&#93;</a></sup> while <a href="/wiki/LastPass" title="LastPass">LastPass</a> in 2011 used 5,000 iterations for <a href="/wiki/JavaScript" title="JavaScript">JavaScript</a> clients and 100,000 iterations for server-side hashing.<sup id="cite_ref-5" class="reference"><a href="#cite_note-5">&#91;5&#93;</a></sup> In 2023, <a href="/wiki/OWASP" title="OWASP">OWASP</a> recommended to use 600,000 iterations for PBKDF2-HMAC-SHA256 and 210,000 for PBKDF2-HMAC-SHA512.<sup id="cite_ref-6" class="reference"><a href="#cite_note-6">&#91;6&#93;</a></sup>
+</p>
+<figure class="mw-default-size" typeof="mw:File/Thumb"><a href="/wiki/File:Pbkdf2_nist.png" class="mw-file-description"><img src="//upload.wikimedia.org/wikipedia/commons/thumb/7/70/Pbkdf2_nist.png/220px-Pbkdf2_nist.png" decoding="async" width="220" height="134" class="mw-file-element" srcset="//upload.wikimedia.org/wikipedia/commons/thumb/7/70/Pbkdf2_nist.png/330px-Pbkdf2_nist.png 1.5x, //upload.wikimedia.org/wikipedia/commons/thumb/7/70/Pbkdf2_nist.png/440px-Pbkdf2_nist.png 2x" data-file-width="1163" data-file-height="709" /></a><figcaption>Algorithmic representation of the iterative process of the Password-Based Key Derivation Function 2.</figcaption></figure>
+<p>Having a salt added to the password reduces the ability to use precomputed hashes (<a href="/wiki/Rainbow_tables" class="mw-redirect" title="Rainbow tables">rainbow tables</a>) for attacks, and means that multiple passwords have to be tested individually, not all at once.  The public key cryptography standard recommends a salt length of at least 64 bits.<sup id="cite_ref-&#82;FC8018s4_7-0" class="reference"><a href="#cite_note-RFC8018s4-7">&#91;7&#93;</a></sup> The US <a href="/wiki/National_Institute_of_Standards_and_Technology" title="National Institute of Standards and Technology">National Institute of Standards and Technology</a> recommends a salt length of at least 128 bits.<sup id="cite_ref-8" class="reference"><a href="#cite_note-8">&#91;8&#93;</a></sup>
+</p>
+<h2><span class="mw-headline" id="Key_derivation_process">Key derivation process</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/w/index.php?title=PBKDF2&amp;action=edit&amp;section=2" title="Edit section: Key derivation process"><span>edit</span></a><span class="mw-editsection-bracket">]</span></span></h2>
+<p>The PBKDF2 key derivation function has five input parameters:<sup id="cite_ref-rfc2898_9-0" class="reference"><a href="#cite_note-rfc2898-9">&#91;9&#93;</a></sup>
+</p>
+<dl><dd><span class="texhtml">DK = PBKDF2(PRF, <var style="padding-right: 1px;">Password</var>, <var style="padding-right: 1px;">Salt</var>, <var style="padding-right: 1px;">c</var>, <var style="padding-right: 1px;">dkLen</var>)</span></dd></dl>
+<p>where:
+</p>
+<ul><li><span class="texhtml">PRF</span> is a pseudorandom function of two parameters with output length <var style="padding-right: 1px;">hLen</var> (e.g., a keyed HMAC)</li>
+<li><var style="padding-right: 1px;">Password</var> is the master password from which a derived key is generated</li>
+<li><var style="padding-right: 1px;">Salt</var> is a sequence of bits, known as a <a href="/wiki/Salt_(cryptography)" title="Salt (cryptography)">cryptographic salt</a></li>
+<li><var style="padding-right: 1px;">c</var> is the number of iterations desired</li>
+<li><var style="padding-right: 1px;">dkLen</var> is the desired bit-length of the derived key</li>
+<li><var style="padding-right: 1px;">DK</var> is the generated derived key</li></ul>
+<p>Each <var style="padding-right: 1px;">hLen</var>-bit block <span class="texhtml">T<sub><var style="padding-right: 1px;">i</var></sub></span> of derived key <var style="padding-right: 1px;">DK</var>, is computed as follows (with <span class="texhtml">+</span> marking string concatenation):
+</p>
+<dl><dd><span class="texhtml"><var style="padding-right: 1px;">DK</var> = T<sub>1</sub> + T<sub>2</sub> + ⋯ + T<sub><var style="padding-right: 1px;">dklen</var>/<var style="padding-right: 1px;">hlen</var></sub></span></dd>
+<dd><span class="texhtml">T<sub>i</sub> = F(<var style="padding-right: 1px;">Password</var>, <var style="padding-right: 1px;">Salt</var>, <var style="padding-right: 1px;">c</var>, <var style="padding-right: 1px;">i</var>)</span></dd></dl>
+<p>The function <span class="texhtml">F</span> is the <a href="/wiki/Xor" class="mw-redirect" title="Xor">xor</a> (<span class="texhtml">^</span>) of <i>c</i> iterations of chained PRFs. The first iteration of PRF uses <i>Password</i> as the PRF key and <i>Salt</i> concatenated with <var style="padding-right: 1px;">i</var> encoded as a big-endian 32-bit integer as the input. (Note that <i>i</i> is a 1-based index.) Subsequent iterations of PRF use <i>Password</i> as the PRF key and the output of the previous PRF computation as the input:
+</p>
+<dl><dd><span class="texhtml">F(<var style="padding-right: 1px;">Password</var>, <var style="padding-right: 1px;">Salt</var>, <var style="padding-right: 1px;">c</var>, <var style="padding-right: 1px;">i</var>) = U<sub>1</sub> ^ U<sub>2</sub> ^ ⋯ ^ U<sub><var style="padding-right: 1px;">c</var></sub></span></dd></dl>
+<p>where:
+</p>
+<dl><dd><span class="texhtml">U<sub>1</sub> = PRF(<var style="padding-right: 1px;">Password</var>, <var style="padding-right: 1px;">Salt</var> + INT_32_BE(<var style="padding-right: 1px;">i</var>))</span></dd>
+<dd><span class="texhtml">U<sub>2</sub> = PRF(<var style="padding-right: 1px;">Password</var>, U<sub>1</sub>)</span></dd>
+<dd><span class="texhtml">⋮</span></dd>
+<dd><span class="texhtml">U<sub><var style="padding-right: 1px;">c</var></sub> = PRF(<var style="padding-right: 1px;">Password</var>, U<sub><var style="padding-right: 1px;">c</var>−1</sub>)</span></dd></dl>
+<p>For example, <a href="/wiki/WPA2" class="mw-redirect" title="WPA2">WPA2</a> uses:
+</p>
+<dl><dd><span class="texhtml">DK = PBKDF2(HMAC−SHA1, <var style="padding-right: 1px;">passphrase</var>, <var style="padding-right: 1px;">ssid</var>, 4096, 256)</span></dd></dl>
+<p>PBKDF1 had a simpler process: the initial <i>U</i> (called <i>T</i> in this version) is created by <span class="texhtml">PRF(<var style="padding-right: 1px;">Password</var> + <var style="padding-right: 1px;">Salt</var>)</span>, and the following ones are simply <span class="texhtml">PRF(<var style="padding-right: 1px;">U</var><sub>previous</sub>)</span>. The key is extracted as the first <i>dkLen</i> bits of the final hash, which is why there is a size limit.<sup id="cite_ref-rfc2898_9-1" class="reference"><a href="#cite_note-rfc2898-9">&#91;9&#93;</a></sup>
+</p>
+<h2><span class="mw-headline" id="HMAC_collisions">HMAC collisions</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/w/index.php?title=PBKDF2&amp;action=edit&amp;section=3" title="Edit section: HMAC collisions"><span>edit</span></a><span class="mw-editsection-bracket">]</span></span></h2>
+<p>PBKDF2 has an interesting property when using HMAC as its pseudo-random function. It is possible to trivially construct any number of different password pairs with collisions within each pair.<sup id="cite_ref-10" class="reference"><a href="#cite_note-10">&#91;10&#93;</a></sup> If a supplied password is longer than the block size of the underlying HMAC hash function, the password is first pre-hashed into a digest, and that digest is instead used as the password. For example, the following password is too long:
+</p>
+<ul><li><b>Password:</b> <code>plnlrtfpijpuhqylxbgqiiyipieyxvfsavzgxbbcfusqkozwpngsyejqlmjsytrmd</code></li></ul>
+<p>therefore, when using HMAC-SHA1, it is pre-hashed using SHA-1 into:
+</p>
+<ul><li><b>SHA1</b> (hex): <code>65426b585154667542717027635463617226672a</code></li></ul>
+<p>Which can be represented in ASCII as:
+</p>
+<ul><li><b>SHA1</b> (ASCII): <code>eBkXQTfuBqp'cTcar&amp;g*</code></li></ul>
+<p>This means regardless of the salt or iterations, PBKDF2-HMAC-SHA1 will generate the same key bytes for the passwords:
+</p>
+<ul><li>"plnlrtfpijpuhqylxbgqiiyipieyxvfsavzgxbbcfusqkozwpngsyejqlmjsytrmd"</li>
+<li>"eBkXQTfuBqp'cTcar&amp;g*"</li></ul>
+<p>For example, using:
+</p>
+<ul><li><b>PRF</b>: HMAC-SHA1</li>
+<li><b>Salt:</b> A009C1A485912C6AE630D3E744240B04</li>
+<li><b>Iterations:</b> 1,000</li>
+<li><b>Derived key length:</b> 16 bytes</li></ul>
+<p>The following two function calls:
+</p>
+<pre>PBKDF2-HMAC-SHA1("plnlrtfpijpuhqylxbgqiiyipieyxvfsavzgxbbcfusqkozwpngsyejqlmjsytrmd", ...)
+PBKDF2-HMAC-SHA1("eBkXQTfuBqp'cTcar&amp;g*", ...) 
+</pre>
+<p>will generate the same derived key bytes (<code>17EB4014C8C461C300E9B61518B9A18B</code>). These derived key collisions do not represent a security vulnerability – as one still must know the original password in order to generate the <i>hash</i> of the password.<sup id="cite_ref-11" class="reference"><a href="#cite_note-11">&#91;11&#93;</a></sup>
+</p>
+<h2><span class="mw-headline" id="Alternatives_to_PBKDF2">Alternatives to PBKDF2</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/w/index.php?title=PBKDF2&amp;action=edit&amp;section=4" title="Edit section: Alternatives to PBKDF2"><span>edit</span></a><span class="mw-editsection-bracket">]</span></span></h2>
+<p>One weakness of PBKDF2 is that while its number of iterations can be adjusted to make it take an arbitrarily large amount of computing time, it can be implemented with a small circuit and very little RAM, which makes brute-force attacks using <a href="/wiki/Application-specific_integrated_circuit" title="Application-specific integrated circuit">application-specific integrated circuits</a> or <a href="/wiki/Graphics_processing_unit" title="Graphics processing unit">graphics processing units</a> relatively cheap.<sup id="cite_ref-percival2009_12-0" class="reference"><a href="#cite_note-percival2009-12">&#91;12&#93;</a></sup>  The <a href="/wiki/Bcrypt" title="Bcrypt">bcrypt</a> password hashing function requires a larger amount of RAM (but still not tunable separately, i.e. fixed for a given amount of CPU time) and is slightly stronger against such attacks,<sup id="cite_ref-13" class="reference"><a href="#cite_note-13">&#91;13&#93;</a></sup> while the more modern <a href="/wiki/Scrypt" title="Scrypt">scrypt</a> key derivation function can use arbitrarily large amounts of memory and is therefore more resistant to ASIC and GPU attacks.<sup id="cite_ref-percival2009_12-1" class="reference"><a href="#cite_note-percival2009-12">&#91;12&#93;</a></sup>
+</p><p>In 2013, the <a href="/wiki/Password_Hashing_Competition" title="Password Hashing Competition">Password Hashing Competition</a> (PHC) was held to develop a more resistant approach. On 20 July 2015 <a href="/wiki/Argon2" title="Argon2">Argon2</a> was selected as the final PHC winner, with special recognition given to four other password hashing schemes: Catena, <a href="/wiki/Lyra2" title="Lyra2">Lyra2</a>, <a href="/wiki/Yescrypt" title="Yescrypt">yescrypt</a> and Makwa.<sup id="cite_ref-14" class="reference"><a href="#cite_note-14">&#91;14&#93;</a></sup> Another alternative is <a href="/wiki/Balloon_hashing" title="Balloon hashing">Balloon hashing</a>, which is recommended in <a href="/wiki/Password_policy#NIST_guidelines" title="Password policy">NIST password guidelines</a>.<sup id="cite_ref-15" class="reference"><a href="#cite_note-15">&#91;15&#93;</a></sup>
+</p><p>To limit a <a href="/wiki/Brute-force_attack" title="Brute-force attack">brute-force attack</a>, it is possible to make each password attempt require an online interaction, without harming the confidentiality of the password. This can be done using an <a href="/wiki/Oblivious_Pseudorandom_Function" class="mw-redirect" title="Oblivious Pseudorandom Function">Oblivious Pseudorandom Function</a> to perform <a href="/wiki/Oblivious_pseudorandom_function#Password-based_key_derivation" title="Oblivious pseudorandom function"> password-hardening</a>.<sup id="cite_ref-16" class="reference"><a href="#cite_note-16">&#91;16&#93;</a></sup> This can be done as alternative to, or as an additional step in, a PBKDF.
+</p>
+<h2><span class="mw-headline" id="See_also">See also</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/w/index.php?title=PBKDF2&amp;action=edit&amp;section=5" title="Edit section: See also"><span>edit</span></a><span class="mw-editsection-bracket">]</span></span></h2>
+<ul><li><a href="/wiki/List_of_PBKDF2_implementations" title="List of PBKDF2 implementations">List of PBKDF2 implementations</a></li></ul>
+<h2><span class="mw-headline" id="References">References</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/w/index.php?title=PBKDF2&amp;action=edit&amp;section=6" title="Edit section: References"><span>edit</span></a><span class="mw-editsection-bracket">]</span></span></h2>
+<style data-mw-deduplicate="TemplateStyles:r1217336898">.mw-parser-output .reflist{font-size:90%;margin-bottom:0.5em;list-style-type:decimal}.mw-parser-output .reflist .references{font-size:100%;margin-bottom:0;list-style-type:inherit}.mw-parser-output .reflist-columns-2{column-width:30em}.mw-parser-output .reflist-columns-3{column-width:25em}.mw-parser-output .reflist-columns{margin-top:0.3em}.mw-parser-output .reflist-columns ol{margin-top:0}.mw-parser-output .reflist-columns li{page-break-inside:avoid;break-inside:avoid-column}.mw-parser-output .reflist-upper-alpha{list-style-type:upper-alpha}.mw-parser-output .reflist-upper-roman{list-style-type:upper-roman}.mw-parser-output .reflist-lower-alpha{list-style-type:lower-alpha}.mw-parser-output .reflist-lower-greek{list-style-type:lower-greek}.mw-parser-output .reflist-lower-roman{list-style-type:lower-roman}</style><div class="reflist reflist-columns references-column-width" style="column-width: 30em;">
+<ol class="references">
+<li id="cite_note-&#82;FC3962-1"><span class="mw-cite-backlink">^ <a href="#cite_ref-RFC3962_1-0"><sup><i><b>a</b></i></sup></a> <a href="#cite_ref-RFC3962_1-1"><sup><i><b>b</b></i></sup></a></span> <span class="reference-text"><style data-mw-deduplicate="TemplateStyles:r1215172403">.mw-parser-output cite.citation{font-style:inherit;word-wrap:break-word}.mw-parser-output .citation q{quotes:"\"""\"""'""'"}.mw-parser-output .citation:target{background-color:rgba(0,127,255,0.133)}.mw-parser-output .id-lock-free.id-lock-free a{background:url("//upload.wikimedia.org/wikipedia/commons/6/65/Lock-green.svg")right 0.1em center/9px no-repeat}body:not(.skin-timeless):not(.skin-minerva) .mw-parser-output .id-lock-free a{background-size:contain}.mw-parser-output .id-lock-limited.id-lock-limited a,.mw-parser-output .id-lock-registration.id-lock-registration a{background:url("//upload.wikimedia.org/wikipedia/commons/d/d6/Lock-gray-alt-2.svg")right 0.1em center/9px no-repeat}body:not(.skin-timeless):not(.skin-minerva) .mw-parser-output .id-lock-limited a,body:not(.skin-timeless):not(.skin-minerva) .mw-parser-output .id-lock-registration a{background-size:contain}.mw-parser-output .id-lock-subscription.id-lock-subscription a{background:url("//upload.wikimedia.org/wikipedia/commons/a/aa/Lock-red-alt-2.svg")right 0.1em center/9px no-repeat}body:not(.skin-timeless):not(.skin-minerva) .mw-parser-output .id-lock-subscription a{background-size:contain}.mw-parser-output .cs1-ws-icon a{background:url("//upload.wikimedia.org/wikipedia/commons/4/4c/Wikisource-logo.svg")right 0.1em center/12px no-repeat}body:not(.skin-timeless):not(.skin-minerva) .mw-parser-output .cs1-ws-icon a{background-size:contain}.mw-parser-output .cs1-code{color:inherit;background:inherit;border:none;padding:inherit}.mw-parser-output .cs1-hidden-error{display:none;color:#d33}.mw-parser-output .cs1-visible-error{color:#d33}.mw-parser-output .cs1-maint{display:none;color:#2C882D;margin-left:0.3em}.mw-parser-output .cs1-format{font-size:95%}.mw-parser-output .cs1-kern-left{padding-left:0.2em}.mw-parser-output .cs1-kern-right{padding-right:0.2em}.mw-parser-output .citation .mw-selflink{font-weight:inherit}html.skin-theme-clientpref-night .mw-parser-output .cs1-maint{color:#18911F}html.skin-theme-clientpref-night .mw-parser-output .cs1-visible-error,html.skin-theme-clientpref-night .mw-parser-output .cs1-hidden-error{color:#f8a397}@media(prefers-color-scheme:dark){html.skin-theme-clientpref-os .mw-parser-output .cs1-visible-error,html.skin-theme-clientpref-os .mw-parser-output .cs1-hidden-error{color:#f8a397}html.skin-theme-clientpref-os .mw-parser-output .cs1-maint{color:#18911F}}</style><cite id="CITEREFRaeburn2005" class="citation journal cs1">Raeburn, Kenneth (2005). <a rel="nofollow" class="external text" href="http://tools.ietf.org/html/rfc3962">"Advanced Encryption Standard (AES) Encryption for Kerberos 5"</a>. <i>tools.ietf.org</i>. <a href="/wiki/Doi_(identifier)" class="mw-redirect" title="Doi (identifier)">doi</a>:<span class="id-lock-free" title="Freely accessible"><a rel="nofollow" class="external text" href="https://doi.org/10.17487%2FRFC3962">10.17487/RFC3962</a></span>. RFC<span class="nowrap">&#160;</span>3962<span class="reference-accessdate">. Retrieved <span class="nowrap">October 23,</span> 2015</span>.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Ajournal&amp;rft.genre=article&amp;rft.jtitle=tools.ietf.org&amp;rft.atitle=Advanced+Encryption+Standard+%28AES%29+Encryption+for+Kerberos+5&amp;rft.date=2005&amp;rft_id=info%3Adoi%2F10.17487%2F&#82;FC3962&amp;rft.aulast=Raeburn&amp;rft.aufirst=Kenneth&amp;rft_id=http%3A%2F%2Ftools.ietf.org%2Fhtml%2Frfc3962&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3APBKDF2" class="Z3988"></span></span>
+</li>
+<li id="cite_note-2"><span class="mw-cite-backlink"><b><a href="#cite_ref-2">^</a></b></span> <span class="reference-text"><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1215172403"><cite id="CITEREFKaliski2000" class="citation journal cs1"><a href="/wiki/Burt_Kaliski" title="Burt Kaliski">Kaliski, Burt</a> (2000). <a rel="nofollow" class="external text" href="http://tools.ietf.org/html/rfc2898#section-5.2">"PKCS<span class="nowrap">&#160;</span>#5: Password-Based Cryptography Specification, Version 2.0"</a>. <i>tools.ietf.org</i>. <a href="/wiki/Doi_(identifier)" class="mw-redirect" title="Doi (identifier)">doi</a>:<span class="id-lock-free" title="Freely accessible"><a rel="nofollow" class="external text" href="https://doi.org/10.17487%2FRFC2898">10.17487/RFC2898</a></span>. RFC<span class="nowrap">&#160;</span>2898<span class="reference-accessdate">. Retrieved <span class="nowrap">October 23,</span> 2015</span>.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Ajournal&amp;rft.genre=article&amp;rft.jtitle=tools.ietf.org&amp;rft.atitle=PKCS%3Cspan+class%3D%22nowrap%22%3E+%3C%2Fspan%3E%235%3A+Password-Based+Cryptography+Specification%2C+Version+2.0&amp;rft.date=2000&amp;rft_id=info%3Adoi%2F10.17487%2F&#82;FC2898&amp;rft.aulast=Kaliski&amp;rft.aufirst=Burt&amp;rft_id=http%3A%2F%2Ftools.ietf.org%2Fhtml%2Frfc2898%23section-5.2&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3APBKDF2" class="Z3988"></span></span>
+</li>
+<li id="cite_note-3"><span class="mw-cite-backlink"><b><a href="#cite_ref-3">^</a></b></span> <span class="reference-text"><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1215172403"><cite id="CITEREFMoriarty2017" class="citation journal cs1">Moriarty, Kathleen; et&#160;al. (2017). Moriarty, K (ed.). <a rel="nofollow" class="external text" href="https://tools.ietf.org/html/rfc8018">"PKCS<span class="nowrap">&#160;</span>#5: Password-Based Cryptography Specification, Version 2.1"</a>. <i>tools.ietf.org</i>. <a href="/wiki/Doi_(identifier)" class="mw-redirect" title="Doi (identifier)">doi</a>:<a rel="nofollow" class="external text" href="https://doi.org/10.17487%2FRFC8018">10.17487/RFC8018</a>. RFC<span class="nowrap">&#160;</span>8018.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Ajournal&amp;rft.genre=article&amp;rft.jtitle=tools.ietf.org&amp;rft.atitle=PKCS%3Cspan+class%3D%22nowrap%22%3E+%3C%2Fspan%3E%235%3A+Password-Based+Cryptography+Specification%2C+Version+2.1&amp;rft.date=2017&amp;rft_id=info%3Adoi%2F10.17487%2F&#82;FC8018&amp;rft.aulast=Moriarty&amp;rft.aufirst=Kathleen&amp;rft_id=https%3A%2F%2Ftools.ietf.org%2Fhtml%2Frfc8018&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3APBKDF2" class="Z3988"></span></span>
+</li>
+<li id="cite_note-4"><span class="mw-cite-backlink"><b><a href="#cite_ref-4">^</a></b></span> <span class="reference-text"><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1215172403"><cite class="citation web cs1"><a rel="nofollow" class="external text" href="http://blog.elcomsoft.com/2010/09/smartphone-forensics-cracking-blackberry-backup-passwords/">"Smartphone Forensics: Cracking BlackBerry Backup Passwords"</a>. <i>Advanced Password Cracking – Insight</i>. ElcomSoft. September 30, 2010<span class="reference-accessdate">. Retrieved <span class="nowrap">October 23,</span> 2015</span>.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Ajournal&amp;rft.genre=unknown&amp;rft.jtitle=Advanced+Password+Cracking+%E2%80%93+Insight&amp;rft.atitle=Smartphone+Forensics%3A+Cracking+BlackBerry+Backup+Passwords&amp;rft.date=2010-09-30&amp;rft_id=http%3A%2F%2Fblog.elcomsoft.com%2F2010%2F09%2Fsmartphone-forensics-cracking-blackberry-backup-passwords%2F&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3APBKDF2" class="Z3988"></span></span>
+</li>
+<li id="cite_note-5"><span class="mw-cite-backlink"><b><a href="#cite_ref-5">^</a></b></span> <span class="reference-text"><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1215172403"><cite class="citation web cs1"><a rel="nofollow" class="external text" href="https://blog.lastpass.com/2011/05/lastpass-security-notification/">"LastPass Security Notification"</a>. <i>The LastPass Blog</i>. May 5, 2011<span class="reference-accessdate">. Retrieved <span class="nowrap">January 31,</span> 2023</span>.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Ajournal&amp;rft.genre=unknown&amp;rft.jtitle=The+LastPass+Blog&amp;rft.atitle=LastPass+Security+Notification&amp;rft.date=2011-05-05&amp;rft_id=https%3A%2F%2Fblog.lastpass.com%2F2011%2F05%2Flastpass-security-notification%2F&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3APBKDF2" class="Z3988"></span></span>
+</li>
+<li id="cite_note-6"><span class="mw-cite-backlink"><b><a href="#cite_ref-6">^</a></b></span> <span class="reference-text"><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1215172403"><cite class="citation web cs1"><a rel="nofollow" class="external text" href="https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html#pbkdf2">"Password Storage Cheat Sheet"</a>. <i>OWASP Cheat Sheet Series</i>. August 15, 2021. <a rel="nofollow" class="external text" href="https://web.archive.org/web/20230123232056/https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html">Archived</a> from the original on January 23, 2023<span class="reference-accessdate">. Retrieved <span class="nowrap">January 23,</span> 2023</span>.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Ajournal&amp;rft.genre=unknown&amp;rft.jtitle=OWASP+Cheat+Sheet+Series&amp;rft.atitle=Password+Storage+Cheat+Sheet&amp;rft.date=2021-08-15&amp;rft_id=https%3A%2F%2Fcheatsheetseries.owasp.org%2Fcheatsheets%2FPassword_Storage_Cheat_Sheet.html%23pbkdf2&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3APBKDF2" class="Z3988"></span></span>
+</li>
+<li id="cite_note-&#82;FC8018s4-7"><span class="mw-cite-backlink"><b><a href="#cite_ref-RFC8018s4_7-0">^</a></b></span> <span class="reference-text"><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1215172403"><cite id="CITEREFMoriarty2017" class="citation journal cs1">Moriarty, Kathleen; et&#160;al. (2017). Moriarty, K (ed.). <a rel="nofollow" class="external text" href="https://tools.ietf.org/html/rfc8018#section-4">"PKCS<span class="nowrap">&#160;</span>#5: Password-Based Cryptography Specification, Version 2.1: Section 4. Salt and Iteration Count"</a>. <i>tools.ietf.org</i>. <a href="/wiki/Doi_(identifier)" class="mw-redirect" title="Doi (identifier)">doi</a>:<a rel="nofollow" class="external text" href="https://doi.org/10.17487%2FRFC8018">10.17487/RFC8018</a>. RFC<span class="nowrap">&#160;</span>8018<span class="reference-accessdate">. Retrieved <span class="nowrap">January 24,</span> 2018</span>.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Ajournal&amp;rft.genre=article&amp;rft.jtitle=tools.ietf.org&amp;rft.atitle=PKCS%3Cspan+class%3D%22nowrap%22%3E+%3C%2Fspan%3E%235%3A+Password-Based+Cryptography+Specification%2C+Version+2.1%3A+Section+4.+Salt+and+Iteration+Count&amp;rft.date=2017&amp;rft_id=info%3Adoi%2F10.17487%2F&#82;FC8018&amp;rft.aulast=Moriarty&amp;rft.aufirst=Kathleen&amp;rft_id=https%3A%2F%2Ftools.ietf.org%2Fhtml%2Frfc8018%23section-4&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3APBKDF2" class="Z3988"></span></span>
+</li>
+<li id="cite_note-8"><span class="mw-cite-backlink"><b><a href="#cite_ref-8">^</a></b></span> <span class="reference-text"><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1215172403"><cite id="CITEREFSönmez_TuranBarkerBurrChen" class="citation web cs1">Sönmez Turan, Meltem; Barker, Elaine; Burr, William; Chen, Lily. <a rel="nofollow" class="external text" href="https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-132.pdf">"Recommendation for Password-Based Key Derivation Part 1: Storage Applications"</a> <span class="cs1-format">(PDF)</span>. <i>NIST</i>. SP<span class="nowrap">&#160;</span>800-132<span class="reference-accessdate">. Retrieved <span class="nowrap">December 20,</span> 2018</span>.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Ajournal&amp;rft.genre=unknown&amp;rft.jtitle=NIST&amp;rft.atitle=Recommendation+for+Password-Based+Key+Derivation+Part+1%3A+Storage+Applications&amp;rft.aulast=S%C3%B6nmez+Turan&amp;rft.aufirst=Meltem&amp;rft.au=Barker%2C+Elaine&amp;rft.au=Burr%2C+William&amp;rft.au=Chen%2C+Lily&amp;rft_id=https%3A%2F%2Fnvlpubs.nist.gov%2Fnistpubs%2FLegacy%2FSP%2Fnistspecialpublication800-132.pdf&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3APBKDF2" class="Z3988"></span></span>
+</li>
+<li id="cite_note-rfc2898-9"><span class="mw-cite-backlink">^ <a href="#cite_ref-rfc2898_9-0"><sup><i><b>a</b></i></sup></a> <a href="#cite_ref-rfc2898_9-1"><sup><i><b>b</b></i></sup></a></span> <span class="reference-text">Password-Based Cryptography Specification <link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1215172403"><a href="/wiki/RFC_(identifier)" class="mw-redirect" title="RFC (identifier)">RFC</a>&#160;<a rel="nofollow" class="external text" href="https://datatracker.ietf.org/doc/html/rfc2898">2898</a></span>
+</li>
+<li id="cite_note-10"><span class="mw-cite-backlink"><b><a href="#cite_ref-10">^</a></b></span> <span class="reference-text"><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1215172403"><cite id="CITEREFBynens" class="citation web cs1">Bynens, Mathias. <a rel="nofollow" class="external text" href="https://mathiasbynens.be/notes/pbkdf2-hmac">"PBKDF2+HMAC hash collisions explained"</a>. <i>mathiasbynens.be</i>.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Ajournal&amp;rft.genre=unknown&amp;rft.jtitle=mathiasbynens.be&amp;rft.atitle=PBKDF2%2BHMAC+hash+collisions+explained&amp;rft.aulast=Bynens&amp;rft.aufirst=Mathias&amp;rft_id=https%3A%2F%2Fmathiasbynens.be%2Fnotes%2Fpbkdf2-hmac&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3APBKDF2" class="Z3988"></span></span>
+</li>
+<li id="cite_note-11"><span class="mw-cite-backlink"><b><a href="#cite_ref-11">^</a></b></span> <span class="reference-text"><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1215172403"><cite class="citation web cs1"><a rel="nofollow" class="external text" href="https://crypto.stackexchange.com/questions/26510/why-is-hmac-sha1-still-considered-secure">"Collision resistance - Why is HMAC-SHA1 still considered secure?"</a>. <i>crypto.stackexchange.com</i>.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Ajournal&amp;rft.genre=unknown&amp;rft.jtitle=crypto.stackexchange.com&amp;rft.atitle=Collision+resistance+-+Why+is+HMAC-SHA1+still+considered+secure%3F&amp;rft_id=https%3A%2F%2Fcrypto.stackexchange.com%2Fquestions%2F26510%2Fwhy-is-hmac-sha1-still-considered-secure&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3APBKDF2" class="Z3988"></span></span>
+</li>
+<li id="cite_note-percival2009-12"><span class="mw-cite-backlink">^ <a href="#cite_ref-percival2009_12-0"><sup><i><b>a</b></i></sup></a> <a href="#cite_ref-percival2009_12-1"><sup><i><b>b</b></i></sup></a></span> <span class="reference-text"><a href="/wiki/Colin_Percival" title="Colin Percival">Colin Percival</a>. <a rel="nofollow" class="external text" href="http://www.tarsnap.com/scrypt.html">scrypt</a>. As presented in <a rel="nofollow" class="external text" href="http://www.tarsnap.com/scrypt/scrypt.pdf">"Stronger Key Derivation via Sequential Memory-Hard Functions"</a>. presented at BSDCan'09, May 2009.</span>
+</li>
+<li id="cite_note-13"><span class="mw-cite-backlink"><b><a href="#cite_ref-13">^</a></b></span> <span class="reference-text"><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1215172403"><cite class="citation web cs1"><a rel="nofollow" class="external text" href="http://securityledger.com/new-25-gpu-monster-devours-passwords-in-seconds">"New 25 GPU Monster Devours Passwords In Seconds"</a>. The Security Ledger. December 4, 2012<span class="reference-accessdate">. Retrieved <span class="nowrap">September 7,</span> 2013</span>.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Abook&amp;rft.genre=unknown&amp;rft.btitle=New+25+GPU+Monster+Devours+Passwords+In+Seconds&amp;rft.pub=The+Security+Ledger&amp;rft.date=2012-12-04&amp;rft_id=http%3A%2F%2Fsecurityledger.com%2Fnew-25-gpu-monster-devours-passwords-in-seconds&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3APBKDF2" class="Z3988"></span></span>
+</li>
+<li id="cite_note-14"><span class="mw-cite-backlink"><b><a href="#cite_ref-14">^</a></b></span> <span class="reference-text"><a rel="nofollow" class="external text" href="https://password-hashing.net">"Password Hashing Competition"</a></span>
+</li>
+<li id="cite_note-15"><span class="mw-cite-backlink"><b><a href="#cite_ref-15">^</a></b></span> <span class="reference-text"><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1215172403"><cite class="citation web cs1"><a rel="nofollow" class="external text" href="https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-63b.pdf">"Digital Identity Guidelines Authentication and Lifecycle Management Section 5.1.1.2"</a> <span class="cs1-format">(PDF)</span>. <i>NIST</i>. SP<span class="nowrap">&#160;</span>800-63B<span class="reference-accessdate">. Retrieved <span class="nowrap">June 18,</span> 2021</span>.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Ajournal&amp;rft.genre=unknown&amp;rft.jtitle=NIST&amp;rft.atitle=Digital+Identity+Guidelines+Authentication+and+Lifecycle+Management+Section+5.1.1.2&amp;rft_id=https%3A%2F%2Fnvlpubs.nist.gov%2Fnistpubs%2FSpecialPublications%2FNIST.SP.800-63b.pdf&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3APBKDF2" class="Z3988"></span></span>
+</li>
+<li id="cite_note-16"><span class="mw-cite-backlink"><b><a href="#cite_ref-16">^</a></b></span> <span class="reference-text"><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1215172403"><cite id="CITEREFFordKaliski2000" class="citation book cs1">Ford, W.; Kaliski, B. S. (2000). <a rel="nofollow" class="external text" href="https://ieeexplore.ieee.org/document/883724">"Server-assisted generation of a strong secret from a password"</a>. <i>Proceedings IEEE 9th International Workshops on Enabling Technologies: Infrastructure for Collaborative Enterprises (WET ICE 2000)</i>. pp.&#160;176–180. <a href="/wiki/Doi_(identifier)" class="mw-redirect" title="Doi (identifier)">doi</a>:<a rel="nofollow" class="external text" href="https://doi.org/10.1109%2FENABL.2000.883724">10.1109/ENABL.2000.883724</a>. <a href="/wiki/ISBN_(identifier)" class="mw-redirect" title="ISBN (identifier)">ISBN</a>&#160;<a href="/wiki/Special:BookSources/0-7695-0798-0" title="Special:BookSources/0-7695-0798-0"><bdi>0-7695-0798-0</bdi></a>. <a href="/wiki/S2CID_(identifier)" class="mw-redirect" title="S2CID (identifier)">S2CID</a>&#160;<a rel="nofollow" class="external text" href="https://api.semanticscholar.org/CorpusID:1977743">1977743</a>.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Abook&amp;rft.genre=bookitem&amp;rft.atitle=Server-assisted+generation+of+a+strong+secret+from+a+password&amp;rft.btitle=Proceedings+IEEE+9th+International+Workshops+on+Enabling+Technologies%3A+Infrastructure+for+Collaborative+Enterprises+%28WET+ICE+2000%29&amp;rft.pages=176-180&amp;rft.date=2000&amp;rft_id=https%3A%2F%2Fapi.semanticscholar.org%2FCorpusID%3A1977743%23id-name%3DS2CID&amp;rft_id=info%3Adoi%2F10.1109%2FENABL.2000.883724&amp;rft.isbn=0-7695-0798-0&amp;rft.aulast=Ford&amp;rft.aufirst=W.&amp;rft.au=Kaliski%2C+B.+S.&amp;rft_id=https%3A%2F%2Fieeexplore.ieee.org%2Fdocument%2F883724&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3APBKDF2" class="Z3988"></span></span>
+</li>
+</ol></div>
+<h2><span class="mw-headline" id="External_links">External links</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/w/index.php?title=PBKDF2&amp;action=edit&amp;section=7" title="Edit section: External links"><span>edit</span></a><span class="mw-editsection-bracket">]</span></span></h2>
+<ul><li><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1215172403"><cite class="citation web cs1"><a rel="nofollow" class="external text" href="https://web.archive.org/web/20170411220929/https://www.emc.com/collateral/white-papers/h11302-pkcs5v2-1-password-based-cryptography-standard-wp.pdf">"PKCS<span class="nowrap">&#160;</span>#5 v2.1"</a> <span class="cs1-format">(PDF)</span>. <i>RSA Laboratories</i>. Archived from <a rel="nofollow" class="external text" href="https://www.emc.com/collateral/white-papers/h11302-pkcs5v2-1-password-based-cryptography-standard-wp.pdf">the original</a> <span class="cs1-format">(PDF)</span> on April 11, 2017.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Ajournal&amp;rft.genre=unknown&amp;rft.jtitle=RSA+Laboratories&amp;rft.atitle=PKCS%3Cspan+class%3D%22nowrap%22%3E+%3C%2Fspan%3E%235+v2.1&amp;rft_id=https%3A%2F%2Fwww.emc.com%2Fcollateral%2Fwhite-papers%2Fh11302-pkcs5v2-1-password-based-cryptography-standard-wp.pdf&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3APBKDF2" class="Z3988"></span></li>
+<li><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1215172403">RFC&#160;<a rel="nofollow" class="external text" href="https://datatracker.ietf.org/doc/html/rfc2898">2898</a> – Specification of PKCS<span class="nowrap">&#160;</span>#5 v2.0.</li>
+<li><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1215172403">RFC&#160;<a rel="nofollow" class="external text" href="https://datatracker.ietf.org/doc/html/rfc6070">6070</a> – Test vectors for PBKDF2 with HMAC-SHA1.</li>
+<li><a rel="nofollow" class="external text" href="http://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-132.pdf">NIST Special Publication 800-132 Recommendation for Password-Based Key Derivation</a></li></ul>
+<div class="navbox-styles"><style data-mw-deduplicate="TemplateStyles:r1129693374">.mw-parser-output .hlist dl,.mw-parser-output .hlist ol,.mw-parser-output .hlist ul{margin:0;padding:0}.mw-parser-output .hlist dd,.mw-parser-output .hlist dt,.mw-parser-output .hlist li{margin:0;display:inline}.mw-parser-output .hlist.inline,.mw-parser-output .hlist.inline dl,.mw-parser-output .hlist.inline ol,.mw-parser-output .hlist.inline ul,.mw-parser-output .hlist dl dl,.mw-parser-output .hlist dl ol,.mw-parser-output .hlist dl ul,.mw-parser-output .hlist ol dl,.mw-parser-output .hlist ol ol,.mw-parser-output .hlist ol ul,.mw-parser-output .hlist ul dl,.mw-parser-output .hlist ul ol,.mw-parser-output .hlist ul ul{display:inline}.mw-parser-output .hlist .mw-empty-li{display:none}.mw-parser-output .hlist dt::after{content:": "}.mw-parser-output .hlist dd::after,.mw-parser-output .hlist li::after{content:" · ";font-weight:bold}.mw-parser-output .hlist dd:last-child::after,.mw-parser-output .hlist dt:last-child::after,.mw-parser-output .hlist li:last-child::after{content:none}.mw-parser-output .hlist dd dd:first-child::before,.mw-parser-output .hlist dd dt:first-child::before,.mw-parser-output .hlist dd li:first-child::before,.mw-parser-output .hlist dt dd:first-child::before,.mw-parser-output .hlist dt dt:first-child::before,.mw-parser-output .hlist dt li:first-child::before,.mw-parser-output .hlist li dd:first-child::before,.mw-parser-output .hlist li dt:first-child::before,.mw-parser-output .hlist li li:first-child::before{content:" (";font-weight:normal}.mw-parser-output .hlist dd dd:last-child::after,.mw-parser-output .hlist dd dt:last-child::after,.mw-parser-output .hlist dd li:last-child::after,.mw-parser-output .hlist dt dd:last-child::after,.mw-parser-output .hlist dt dt:last-child::after,.mw-parser-output .hlist dt li:last-child::after,.mw-parser-output .hlist li dd:last-child::after,.mw-parser-output .hlist li dt:last-child::after,.mw-parser-output .hlist li li:last-child::after{content:")";font-weight:normal}.mw-parser-output .hlist ol{counter-reset:listitem}.mw-parser-output .hlist ol>li{counter-increment:listitem}.mw-parser-output .hlist ol>li::before{content:" "counter(listitem)"\a0 "}.mw-parser-output .hlist dd ol>li:first-child::before,.mw-parser-output .hlist dt ol>li:first-child::before,.mw-parser-output .hlist li ol>li:first-child::before{content:" ("counter(listitem)"\a0 "}</style><style data-mw-deduplicate="TemplateStyles:r1061467846">.mw-parser-output .navbox{box-sizing:border-box;border:1px solid #a2a9b1;width:100%;clear:both;font-size:88%;text-align:center;padding:1px;margin:1em auto 0}.mw-parser-output .navbox .navbox{margin-top:0}.mw-parser-output .navbox+.navbox,.mw-parser-output .navbox+.navbox-styles+.navbox{margin-top:-1px}.mw-parser-output .navbox-inner,.mw-parser-output .navbox-subgroup{width:100%}.mw-parser-output .navbox-group,.mw-parser-output .navbox-title,.mw-parser-output .navbox-abovebelow{padding:0.25em 1em;line-height:1.5em;text-align:center}.mw-parser-output .navbox-group{white-space:nowrap;text-align:right}.mw-parser-output .navbox,.mw-parser-output .navbox-subgroup{background-color:#fdfdfd}.mw-parser-output .navbox-list{line-height:1.5em;border-color:#fdfdfd}.mw-parser-output .navbox-list-with-group{text-align:left;border-left-width:2px;border-left-style:solid}.mw-parser-output tr+tr>.navbox-abovebelow,.mw-parser-output tr+tr>.navbox-group,.mw-parser-output tr+tr>.navbox-image,.mw-parser-output tr+tr>.navbox-list{border-top:2px solid #fdfdfd}.mw-parser-output .navbox-title{background-color:#ccf}.mw-parser-output .navbox-abovebelow,.mw-parser-output .navbox-group,.mw-parser-output .navbox-subgroup .navbox-title{background-color:#ddf}.mw-parser-output .navbox-subgroup .navbox-group,.mw-parser-output .navbox-subgroup .navbox-abovebelow{background-color:#e6e6ff}.mw-parser-output .navbox-even{background-color:#f7f7f7}.mw-parser-output .navbox-odd{background-color:transparent}.mw-parser-output .navbox .hlist td dl,.mw-parser-output .navbox .hlist td ol,.mw-parser-output .navbox .hlist td ul,.mw-parser-output .navbox td.hlist dl,.mw-parser-output .navbox td.hlist ol,.mw-parser-output .navbox td.hlist ul{padding:0.125em 0}.mw-parser-output .navbox .navbar{display:block;font-size:100%}.mw-parser-output .navbox-title .navbar{float:left;text-align:left;margin-right:0.5em}</style><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1129693374"><style data-mw-deduplicate="TemplateStyles:r1063604349">.mw-parser-output .navbar{display:inline;font-size:88%;font-weight:normal}.mw-parser-output .navbar-collapse{float:left;text-align:left}.mw-parser-output .navbar-boxtext{word-spacing:0}.mw-parser-output .navbar ul{display:inline-block;white-space:nowrap;line-height:inherit}.mw-parser-output .navbar-brackets::before{margin-right:-0.125em;content:"[ "}.mw-parser-output .navbar-brackets::after{margin-left:-0.125em;content:" ]"}.mw-parser-output .navbar li{word-spacing:-0.125em}.mw-parser-output .navbar a>span,.mw-parser-output .navbar a>abbr{text-decoration:inherit}.mw-parser-output .navbar-mini abbr{font-variant:small-caps;border-bottom:none;text-decoration:none;cursor:inherit}.mw-parser-output .navbar-ct-full{font-size:114%;margin:0 7em}.mw-parser-output .navbar-ct-mini{font-size:114%;margin:0 4em}</style></div><div role="navigation" class="navbox" aria-label="Navbox" style="padding:3px"><table class="nowraplinks hlist navbox-inner" style="border-spacing:0;background:transparent;color:inherit"><tbody><tr><td colspan="2" class="navbox-list navbox-odd" style="width:100%;padding:0"><div style="padding:0 0.25em"></div><table class="nowraplinks navbox-subgroup" style="border-spacing:0"><tbody><tr><td colspan="2" class="navbox-list navbox-odd" style="width:100%;padding:0"><div style="padding:0 0.25em"></div><table class="nowraplinks hlist mw-collapsible mw-collapsed navbox-subgroup" style="border-spacing:0"><tbody><tr><th scope="col" class="navbox-title" colspan="2"><div class="navbar plainlinks hlist navbar-mini"><ul><li class="nv-view"><a href="/wiki/Template:Cryptography_hash" title="Template:Cryptography hash"><abbr title="View this template" style=";;background:none transparent;border:none;box-shadow:none;padding:0;">v</abbr></a></li><li class="nv-talk"><a href="/wiki/Template_talk:Cryptography_hash" title="Template talk:Cryptography hash"><abbr title="Discuss this template" style=";;background:none transparent;border:none;box-shadow:none;padding:0;">t</abbr></a></li><li class="nv-edit"><a href="/wiki/Special:EditPage/Template:Cryptography_hash" title="Special:EditPage/Template:Cryptography hash"><abbr title="Edit this template" style=";;background:none transparent;border:none;box-shadow:none;padding:0;">e</abbr></a></li></ul></div><div id="Cryptographic_hash_functions_and_message_authentication_codes" style="font-size:114%;margin:0 4em"><a href="/wiki/Cryptographic_hash_function" title="Cryptographic hash function">Cryptographic hash functions</a> and <a href="/wiki/Message_authentication_code" title="Message authentication code">message authentication codes</a></div></th></tr><tr><td class="navbox-abovebelow" colspan="2"><div>
+<ul><li><a href="/wiki/List_of_hash_functions" title="List of hash functions">List</a></li>
+<li><a href="/wiki/Comparison_of_cryptographic_hash_functions" title="Comparison of cryptographic hash functions">Comparison</a></li>
+<li><a href="/wiki/Hash_function_security_summary" title="Hash function security summary">Known attacks</a></li></ul>
+</div></td></tr><tr><th scope="row" class="navbox-group" style="width:1%">Common functions</th><td class="navbox-list-with-group navbox-list navbox-odd" style="width:100%;padding:0"><div style="padding:0 0.25em">
+<ul><li><a href="/wiki/MD5" title="MD5">MD5</a> (compromised)</li>
+<li><a href="/wiki/SHA-1" title="SHA-1">SHA-1</a> (compromised)</li>
+<li><a href="/wiki/SHA-2" title="SHA-2">SHA-2</a></li>
+<li><a href="/wiki/SHA-3" title="SHA-3">SHA-3</a></li>
+<li><a href="/wiki/BLAKE_(hash_function)#BLAKE2" title="BLAKE (hash function)">BLAKE2</a></li></ul>
+</div></td></tr><tr><th scope="row" class="navbox-group" style="width:1%"><a href="/wiki/NIST_hash_function_competition" title="NIST hash function competition">SHA-3 finalists</a></th><td class="navbox-list-with-group navbox-list navbox-even" style="width:100%;padding:0"><div style="padding:0 0.25em">
+<ul><li><a href="/wiki/BLAKE_(hash_function)" title="BLAKE (hash function)">BLAKE</a></li>
+<li><a href="/wiki/Gr%C3%B8stl" title="Grøstl">Grøstl</a></li>
+<li><a href="/wiki/JH_(hash_function)" title="JH (hash function)">JH</a></li>
+<li><a href="/wiki/Skein_(hash_function)" title="Skein (hash function)">Skein</a></li>
+<li><a href="/wiki/SHA-3" title="SHA-3">Keccak</a> (winner)</li></ul>
+</div></td></tr><tr><th scope="row" class="navbox-group" style="width:1%">Other functions</th><td class="navbox-list-with-group navbox-list navbox-odd" style="width:100%;padding:0"><div style="padding:0 0.25em">
+<ul><li><a href="/wiki/BLAKE3" class="mw-redirect" title="BLAKE3">BLAKE3</a></li>
+<li><a href="/wiki/CubeHash" title="CubeHash">CubeHash</a></li>
+<li><a href="/wiki/Elliptic_curve_only_hash" title="Elliptic curve only hash">ECOH</a></li>
+<li><a href="/wiki/Fast_syndrome-based_hash" title="Fast syndrome-based hash">FSB</a></li>
+<li><a href="/wiki/Fugue_(hash_function)" title="Fugue (hash function)">Fugue</a></li>
+<li><a href="/wiki/GOST_(hash_function)" title="GOST (hash function)">GOST</a></li>
+<li><a href="/wiki/HAS-160" title="HAS-160">HAS-160</a></li>
+<li><a href="/wiki/HAVAL" title="HAVAL">HAVAL</a></li>
+<li><a href="/wiki/Kupyna" title="Kupyna">Kupyna</a></li>
+<li><a href="/wiki/LSH_(hash_function)" title="LSH (hash function)">LSH</a></li>
+<li><a href="/wiki/Lane_(hash_function)" title="Lane (hash function)">Lane</a></li>
+<li><a href="/wiki/MASH-1" title="MASH-1">MASH-1</a></li>
+<li><a href="/wiki/MASH-1#MASH2" title="MASH-1">MASH-2</a></li>
+<li><a href="/wiki/MD2_(hash_function)" title="MD2 (hash function)">MD2</a></li>
+<li><a href="/wiki/MD4" title="MD4">MD4</a></li>
+<li><a href="/wiki/MD6" title="MD6">MD6</a></li>
+<li><a href="/wiki/MDC-2" title="MDC-2">MDC-2</a></li>
+<li><a href="/wiki/N-hash" title="N-hash">N-hash</a></li>
+<li><a href="/wiki/RIPEMD" title="RIPEMD">RIPEMD</a></li>
+<li><a href="/wiki/RadioGat%C3%BAn" title="RadioGatún">RadioGatún</a></li>
+<li><a href="/wiki/SIMD_(hash_function)" title="SIMD (hash function)">SIMD</a></li>
+<li><a href="/wiki/SM3_(hash_function)" title="SM3 (hash function)">SM3</a></li>
+<li><a href="/wiki/SWIFFT" title="SWIFFT">SWIFFT</a></li>
+<li><a href="/wiki/Shabal" title="Shabal">Shabal</a></li>
+<li><a href="/wiki/Snefru" title="Snefru">Snefru</a></li>
+<li><a href="/wiki/Streebog" title="Streebog">Streebog</a></li>
+<li><a href="/wiki/Tiger_(hash_function)" title="Tiger (hash function)">Tiger</a></li>
+<li><a href="/wiki/Very_smooth_hash" title="Very smooth hash">VSH</a></li>
+<li><a href="/wiki/Whirlpool_(hash_function)" title="Whirlpool (hash function)">Whirlpool</a></li></ul>
+</div></td></tr><tr><th scope="row" class="navbox-group" style="width:1%">Password hashing/<br /><a href="/wiki/Key_stretching" title="Key stretching">key stretching</a> functions</th><td class="navbox-list-with-group navbox-list navbox-even" style="width:100%;padding:0"><div style="padding:0 0.25em">
+<ul><li><a href="/wiki/Argon2" title="Argon2">Argon2</a></li>
+<li><a href="/wiki/Balloon_hashing" title="Balloon hashing">Balloon</a></li>
+<li><a href="/wiki/Bcrypt" title="Bcrypt">bcrypt</a></li>
+<li><a href="/wiki/Catena_(cryptography)" class="mw-redirect" title="Catena (cryptography)">Catena</a></li>
+<li><a href="/wiki/Crypt_(C)" title="Crypt (C)">crypt</a></li>
+<li><a href="/wiki/LAN_Manager#LM_hash_details" title="LAN Manager">LM hash</a></li>
+<li><a href="/wiki/Lyra2" title="Lyra2">Lyra2</a></li>
+<li><a href="/wiki/Makwa_(cryptography)" class="mw-redirect" title="Makwa (cryptography)">Makwa</a></li>
+<li><a class="mw-selflink selflink">PBKDF2</a></li>
+<li><a href="/wiki/Scrypt" title="Scrypt">scrypt</a></li>
+<li><a href="/wiki/Yescrypt" title="Yescrypt">yescrypt</a></li></ul>
+</div></td></tr><tr><th scope="row" class="navbox-group" style="width:1%">General purpose<br /><a href="/wiki/Key_derivation_function" title="Key derivation function">key derivation functions</a></th><td class="navbox-list-with-group navbox-list navbox-odd" style="width:100%;padding:0"><div style="padding:0 0.25em">
+<ul><li><a href="/wiki/HKDF" title="HKDF">HKDF</a></li>
+<li>KDF1/KDF2</li></ul>
+</div></td></tr><tr><th scope="row" class="navbox-group" style="width:1%"><a href="/wiki/Message_authentication_code" title="Message authentication code">MAC functions</a></th><td class="navbox-list-with-group navbox-list navbox-even" style="width:100%;padding:0"><div style="padding:0 0.25em">
+<ul><li><a href="/wiki/CBC-MAC" title="CBC-MAC">CBC-MAC</a></li>
+<li><a href="/wiki/Data_Authentication_Algorithm" title="Data Authentication Algorithm">DAA</a></li>
+<li><a href="/wiki/Galois_Message_Authentication_Code" class="mw-redirect" title="Galois Message Authentication Code">GMAC</a></li>
+<li><a href="/wiki/HMAC" title="HMAC">HMAC</a></li>
+<li><a href="/wiki/NMAC" class="mw-redirect" title="NMAC">NMAC</a></li>
+<li><a href="/wiki/One-key_MAC" title="One-key MAC">OMAC</a>/<a href="/wiki/One-key_MAC" title="One-key MAC">CMAC</a></li>
+<li><a href="/wiki/PMAC_(cryptography)" title="PMAC (cryptography)">PMAC</a></li>
+<li><a href="/wiki/Poly1305" title="Poly1305">Poly1305</a></li>
+<li><a href="/wiki/SipHash" title="SipHash">SipHash</a></li>
+<li><a href="/wiki/UMAC" title="UMAC">UMAC</a></li>
+<li><a href="/wiki/VMAC" title="VMAC">VMAC</a></li></ul>
+</div></td></tr><tr><th scope="row" class="navbox-group" style="width:1%"><a href="/wiki/Authenticated_encryption" title="Authenticated encryption">Authenticated<br />encryption</a> modes</th><td class="navbox-list-with-group navbox-list navbox-odd" style="width:100%;padding:0"><div style="padding:0 0.25em">
+<ul><li><a href="/wiki/CCM_mode" title="CCM mode">CCM</a></li>
+<li><a href="/wiki/ChaCha20-Poly1305" title="ChaCha20-Poly1305">ChaCha20-Poly1305</a></li>
+<li><a href="/wiki/CWC_mode" title="CWC mode">CWC</a></li>
+<li><a href="/wiki/EAX_mode" title="EAX mode">EAX</a></li>
+<li><a href="/wiki/Galois/Counter_Mode" title="Galois/Counter Mode">GCM</a></li>
+<li><a href="/wiki/IAPM_(mode)" title="IAPM (mode)">IAPM</a></li>
+<li><a href="/wiki/OCB_mode" title="OCB mode">OCB</a></li></ul>
+</div></td></tr><tr><th scope="row" class="navbox-group" style="width:1%">Attacks</th><td class="navbox-list-with-group navbox-list navbox-even" style="width:100%;padding:0"><div style="padding:0 0.25em">
+<ul><li><a href="/wiki/Collision_attack" title="Collision attack">Collision attack</a></li>
+<li><a href="/wiki/Preimage_attack" title="Preimage attack">Preimage attack</a></li>
+<li><a href="/wiki/Birthday_attack" title="Birthday attack">Birthday attack</a></li>
+<li><a href="/wiki/Brute-force_attack" title="Brute-force attack">Brute-force attack</a></li>
+<li><a href="/wiki/Rainbow_table" title="Rainbow table">Rainbow table</a></li>
+<li><a href="/wiki/Side-channel_attack" title="Side-channel attack">Side-channel attack</a></li>
+<li><a href="/wiki/Length_extension_attack" title="Length extension attack">Length extension attack</a></li></ul>
+</div></td></tr><tr><th scope="row" class="navbox-group" style="width:1%">Design</th><td class="navbox-list-with-group navbox-list navbox-odd" style="width:100%;padding:0"><div style="padding:0 0.25em">
+<ul><li><a href="/wiki/Avalanche_effect" title="Avalanche effect">Avalanche effect</a></li>
+<li><a href="/wiki/Hash_collision" title="Hash collision">Hash collision</a></li>
+<li><a href="/wiki/Merkle%E2%80%93Damg%C3%A5rd_construction" title="Merkle–Damgård construction">Merkle–Damgård construction</a></li>
+<li><a href="/wiki/Sponge_function" title="Sponge function">Sponge function</a></li>
+<li><a href="/wiki/HAIFA_construction" title="HAIFA construction">HAIFA construction</a></li></ul>
+</div></td></tr><tr><th scope="row" class="navbox-group" style="width:1%">Standardization</th><td class="navbox-list-with-group navbox-list navbox-even" style="width:100%;padding:0"><div style="padding:0 0.25em">
+<ul><li><a href="/wiki/CAESAR_Competition" title="CAESAR Competition">CAESAR Competition</a></li>
+<li><a href="/wiki/CRYPTREC" title="CRYPTREC">CRYPTREC</a></li>
+<li><a href="/wiki/NESSIE" title="NESSIE">NESSIE</a></li>
+<li><a href="/wiki/NIST_hash_function_competition" title="NIST hash function competition">NIST hash function competition</a></li>
+<li><a href="/wiki/Password_Hashing_Competition" title="Password Hashing Competition">Password Hashing Competition</a></li></ul>
+</div></td></tr><tr><th scope="row" class="navbox-group" style="width:1%">Utilization</th><td class="navbox-list-with-group navbox-list navbox-odd" style="width:100%;padding:0"><div style="padding:0 0.25em">
+<ul><li><a href="/wiki/Post-quantum_cryptography#Hash-based_cryptography" title="Post-quantum cryptography">Hash-based cryptography</a></li>
+<li><a href="/wiki/Merkle_tree" title="Merkle tree">Merkle tree</a></li>
+<li><a href="/wiki/Message_authentication" title="Message authentication">Message authentication</a></li>
+<li><a href="/wiki/Proof_of_work" title="Proof of work">Proof of work</a></li>
+<li><a href="/wiki/Salt_(cryptography)" title="Salt (cryptography)">Salt</a></li>
+<li><a href="/wiki/Pepper_(cryptography)" title="Pepper (cryptography)">Pepper</a></li></ul>
+</div></td></tr></tbody></table><div></div></td></tr></tbody></table><div></div></td></tr><tr><td colspan="2" class="navbox-list navbox-odd" style="width:100%;padding:0"><div style="padding:0 0.25em"></div><table class="nowraplinks mw-collapsible mw-collapsed navbox-subgroup" style="border-spacing:0"><tbody><tr><th scope="col" class="navbox-title" colspan="2"><div class="navbar plainlinks hlist navbar-mini"><ul><li class="nv-view"><a href="/wiki/Template:Cryptography_navbox" title="Template:Cryptography navbox"><abbr title="View this template" style=";;background:none transparent;border:none;box-shadow:none;padding:0;">v</abbr></a></li><li class="nv-talk"><a href="/wiki/Template_talk:Cryptography_navbox" title="Template talk:Cryptography navbox"><abbr title="Discuss this template" style=";;background:none transparent;border:none;box-shadow:none;padding:0;">t</abbr></a></li><li class="nv-edit"><a href="/wiki/Special:EditPage/Template:Cryptography_navbox" title="Special:EditPage/Template:Cryptography navbox"><abbr title="Edit this template" style=";;background:none transparent;border:none;box-shadow:none;padding:0;">e</abbr></a></li></ul></div><div id="Cryptography" style="font-size:114%;margin:0 4em"><a href="/wiki/Cryptography" title="Cryptography">Cryptography</a></div></th></tr><tr><th scope="row" class="navbox-group" style="width:1%">General</th><td class="navbox-list-with-group navbox-list navbox-odd" style="width:100%;padding:0"><div style="padding:0 0.25em">
+<ul><li><a href="/wiki/History_of_cryptography" title="History of cryptography">History of cryptography</a></li>
+<li><a href="/wiki/Outline_of_cryptography" title="Outline of cryptography">Outline of cryptography</a></li>
+<li><a href="/wiki/Cryptographic_protocol" title="Cryptographic protocol">Cryptographic protocol</a>
+<ul><li><a href="/wiki/Authentication_protocol" title="Authentication protocol">Authentication protocol</a></li></ul></li>
+<li><a href="/wiki/Cryptographic_primitive" title="Cryptographic primitive">Cryptographic primitive</a></li>
+<li><a href="/wiki/Cryptanalysis" title="Cryptanalysis">Cryptanalysis</a></li>
+<li><a href="/wiki/Cryptocurrency" title="Cryptocurrency">Cryptocurrency</a></li>
+<li><a href="/wiki/Cryptosystem" title="Cryptosystem">Cryptosystem</a></li>
+<li><a href="/wiki/Cryptographic_nonce" title="Cryptographic nonce">Cryptographic nonce</a></li>
+<li><a href="/wiki/Cryptovirology" title="Cryptovirology">Cryptovirology</a></li>
+<li><a href="/wiki/Hash_function" title="Hash function">Hash function</a>
+<ul><li><a href="/wiki/Cryptographic_hash_function" title="Cryptographic hash function">Cryptographic hash function</a></li>
+<li><a href="/wiki/Key_derivation_function" title="Key derivation function">Key derivation function</a></li></ul></li>
+<li><a href="/wiki/Digital_signature" title="Digital signature">Digital signature</a></li>
+<li><a href="/wiki/Kleptography" title="Kleptography">Kleptography</a></li>
+<li><a href="/wiki/Key_(cryptography)" title="Key (cryptography)">Key (cryptography)</a></li>
+<li><a href="/wiki/Key_exchange" title="Key exchange">Key exchange</a></li>
+<li><a href="/wiki/Key_generator" title="Key generator">Key generator</a></li>
+<li><a href="/wiki/Key_schedule" title="Key schedule">Key schedule</a></li>
+<li><a href="/wiki/Key_stretching" title="Key stretching">Key stretching</a></li>
+<li><a href="/wiki/Keygen" title="Keygen">Keygen</a></li>
+<li><a href="/wiki/Cryptojacking_malware" class="mw-redirect" title="Cryptojacking malware">Cryptojacking malware</a></li>
+<li><a href="/wiki/Ransomware" title="Ransomware">Ransomware</a></li>
+<li><a href="/wiki/Random_number_generation" title="Random number generation">Random number generation</a>
+<ul><li><a href="/wiki/Cryptographically_secure_pseudorandom_number_generator" title="Cryptographically secure pseudorandom number generator">Cryptographically secure pseudorandom number generator</a> (CSPRNG)</li></ul></li>
+<li><a href="/wiki/Pseudorandom_noise" title="Pseudorandom noise">Pseudorandom noise</a> (PRN)</li>
+<li><a href="/wiki/Secure_channel" title="Secure channel">Secure channel</a></li>
+<li><a href="/wiki/Insecure_channel" class="mw-redirect" title="Insecure channel">Insecure channel</a></li>
+<li><a href="/wiki/Subliminal_channel" title="Subliminal channel">Subliminal channel</a></li>
+<li><a href="/wiki/Encryption" title="Encryption">Encryption</a></li>
+<li><a href="/wiki/Decryption" class="mw-redirect" title="Decryption">Decryption</a></li>
+<li><a href="/wiki/End-to-end_encryption" title="End-to-end encryption">End-to-end encryption</a></li>
+<li><a href="/wiki/Harvest_now,_decrypt_later" title="Harvest now, decrypt later">Harvest now, decrypt later</a></li>
+<li><a href="/wiki/Information-theoretic_security" title="Information-theoretic security">Information-theoretic security</a></li>
+<li><a href="/wiki/Plaintext" title="Plaintext">Plaintext</a></li>
+<li><a href="/wiki/Codetext" class="mw-redirect" title="Codetext">Codetext</a></li>
+<li><a href="/wiki/Ciphertext" title="Ciphertext">Ciphertext</a></li>
+<li><a href="/wiki/Shared_secret" title="Shared secret">Shared secret</a></li>
+<li><a href="/wiki/Trapdoor_function" title="Trapdoor function">Trapdoor function</a></li>
+<li><a href="/wiki/Trusted_timestamping" title="Trusted timestamping">Trusted timestamping</a></li>
+<li><a href="/wiki/Key-based_routing" title="Key-based routing">Key-based routing</a></li>
+<li><a href="/wiki/Onion_routing" title="Onion routing">Onion routing</a></li>
+<li><a href="/wiki/Garlic_routing" title="Garlic routing">Garlic routing</a></li>
+<li><a href="/wiki/Kademlia" title="Kademlia">Kademlia</a></li>
+<li><a href="/wiki/Mix_network" title="Mix network">Mix network</a></li></ul>
+</div></td></tr><tr><th scope="row" class="navbox-group" style="width:1%">Mathematics</th><td class="navbox-list-with-group navbox-list navbox-even" style="width:100%;padding:0"><div style="padding:0 0.25em">
+<ul><li><a href="/wiki/Cryptographic_hash_function" title="Cryptographic hash function">Cryptographic hash function</a></li>
+<li><a href="/wiki/Block_cipher" title="Block cipher">Block cipher</a></li>
+<li><a href="/wiki/Stream_cipher" title="Stream cipher">Stream cipher</a></li>
+<li><a href="/wiki/Symmetric-key_algorithm" title="Symmetric-key algorithm">Symmetric-key algorithm</a></li>
+<li><a href="/wiki/Authenticated_encryption" title="Authenticated encryption">Authenticated encryption</a></li>
+<li><a href="/wiki/Public-key_cryptography" title="Public-key cryptography">Public-key cryptography</a></li>
+<li><a href="/wiki/Quantum_key_distribution" title="Quantum key distribution">Quantum key distribution</a></li>
+<li><a href="/wiki/Quantum_cryptography" title="Quantum cryptography">Quantum cryptography</a></li>
+<li><a href="/wiki/Post-quantum_cryptography" title="Post-quantum cryptography">Post-quantum cryptography</a></li>
+<li><a href="/wiki/Message_authentication_code" title="Message authentication code">Message authentication code</a></li>
+<li><a href="/wiki/Cryptographically_secure_pseudorandom_number_generator" title="Cryptographically secure pseudorandom number generator">Random numbers</a></li>
+<li><a href="/wiki/Steganography" title="Steganography">Steganography</a></li></ul>
+</div></td></tr><tr><td class="navbox-abovebelow" colspan="2"><div>
+<ul><li><span class="noviewer" typeof="mw:File"><span title="Category"><img alt="" src="//upload.wikimedia.org/wikipedia/en/thumb/9/96/Symbol_category_class.svg/16px-Symbol_category_class.svg.png" decoding="async" width="16" height="16" class="mw-file-element" srcset="//upload.wikimedia.org/wikipedia/en/thumb/9/96/Symbol_category_class.svg/23px-Symbol_category_class.svg.png 1.5x, //upload.wikimedia.org/wikipedia/en/thumb/9/96/Symbol_category_class.svg/31px-Symbol_category_class.svg.png 2x" data-file-width="180" data-file-height="185" /></span></span> <a href="/wiki/Category:Cryptography" title="Category:Cryptography">Category</a></li></ul>
+</div></td></tr></tbody></table><div></div></td></tr></tbody></table></div>
+<!-- 
+NewPP limit report
+Parsed by mw‐web.codfw.main‐6b6f4c49c‐n5wlz
+Cached time: 20240405072942
+Cache expiry: 2592000
+Reduced expiry: false
+Complications: [vary‐revision‐sha1, show‐toc]
+CPU time usage: 0.337 seconds
+Real time usage: 0.433 seconds
+Preprocessor visited node count: 3025/1000000
+Post‐expand include size: 114601/2097152 bytes
+Template argument size: 4239/2097152 bytes
+Highest expansion depth: 16/100
+Expensive parser function count: 2/500
+Unstrip recursion depth: 1/20
+Unstrip post‐expand size: 69142/5000000 bytes
+Lua time usage: 0.186/10.000 seconds
+Lua memory usage: 4891762/52428800 bytes
+Number of Wikibase entities loaded: 0/400
+-->
+<!--
+Transclusion expansion time report (%,ms,calls,template)
+100.00%  360.919      1 -total
+ 48.55%  175.230      4 Template:Navbox
+ 41.71%  150.551      1 Template:Reflist
+ 23.81%   85.946      1 Template:Cryptography_navbox
+ 23.71%   85.572      4 Template:Cite_journal
+ 15.63%   56.414      1 Template:Short_description
+ 11.10%   40.047      1 Template:Cryptography_hash
+  9.62%   34.732      2 Template:Pagetype
+  8.57%   30.941      9 Template:Cite_web
+  7.25%   26.173     16 Template:Math
+-->
+
+<!-- Saved in parser cache with key enwiki:pcache:idhash:1568244-0!canonical and timestamp 20240405072942 and revision id 1209957709. Rendering was triggered because: page-view
+ -->
+</div><!--esi <esi:include src="/esitest-fa8a495983347898/content" /> --><noscript><img src="https://login.wikimedia.org/wiki/Special:CentralAutoLogin/start?type=1x1" alt="" width="1" height="1" style="border: none; position: absolute;"></noscript>
+<div class="printfooter" data-nosnippet="">Retrieved from "<a dir="ltr" href="https://en.wikipedia.org/w/index.php?title=PBKDF2&amp;oldid=1209957709">https://en.wikipedia.org/w/index.php?title=PBKDF2&amp;oldid=1209957709</a>"</div></div>
+					<div id="catlinks" class="catlinks" data-mw="interface"><div id="mw-normal-catlinks" class="mw-normal-catlinks"><a href="/wiki/Help:Category" title="Help:Category">Categories</a>: <ul><li><a href="/wiki/Category:Password_authentication" title="Category:Password authentication">Password authentication</a></li><li><a href="/wiki/Category:Cryptography_standards" title="Category:Cryptography standards">Cryptography standards</a></li><li><a href="/wiki/Category:Key_derivation_functions" title="Category:Key derivation functions">Key derivation functions</a></li></ul></div><div id="mw-hidden-catlinks" class="mw-hidden-catlinks mw-hidden-cats-hidden">Hidden categories: <ul><li><a href="/wiki/Category:Articles_with_short_description" title="Category:Articles with short description">Articles with short description</a></li><li><a href="/wiki/Category:Short_description_matches_Wikidata" title="Category:Short description matches Wikidata">Short description matches Wikidata</a></li><li><a href="/wiki/Category:Use_mdy_dates_from_May_2022" title="Category:Use mdy dates from May 2022">Use mdy dates from May 2022</a></li></ul></div></div>
+				</div>
+			</main>
+			
+		</div>
+		<div class="mw-footer-container">
+			
+<footer id="footer" class="mw-footer" role="contentinfo" >
+	<ul id="footer-info">
+	<li id="footer-info-lastmod"> This page was last edited on 24 February 2024, at 09:19<span class="anonymous-show">&#160;(UTC)</span>.</li>
+	<li id="footer-info-copyright">Text is available under the <a rel="license" href="//en.wikipedia.org/wiki/Wikipedia:Text_of_the_Creative_Commons_Attribution-ShareAlike_4.0_International_License">Creative Commons Attribution-ShareAlike License 4.0</a><a rel="license" href="//en.wikipedia.org/wiki/Wikipedia:Text_of_the_Creative_Commons_Attribution-ShareAlike_4.0_International_License" style="display:none;"></a>;
+additional terms may apply. By using this site, you agree to the <a href="//foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Terms_of_Use">Terms of Use</a> and <a href="//foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Privacy_policy">Privacy Policy</a>. Wikipedia® is a registered trademark of the <a href="//www.wikimediafoundation.org/">Wikimedia Foundation, Inc.</a>, a non-profit organization.</li>
+</ul>
+
+	<ul id="footer-places">
+	<li id="footer-places-privacy"><a href="https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Privacy_policy">Privacy policy</a></li>
+	<li id="footer-places-about"><a href="/wiki/Wikipedia:About">About Wikipedia</a></li>
+	<li id="footer-places-disclaimers"><a href="/wiki/Wikipedia:General_disclaimer">Disclaimers</a></li>
+	<li id="footer-places-contact"><a href="//en.wikipedia.org/wiki/Wikipedia:Contact_us">Contact Wikipedia</a></li>
+	<li id="footer-places-wm-codeofconduct"><a href="https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Universal_Code_of_Conduct">Code of Conduct</a></li>
+	<li id="footer-places-developers"><a href="https://developer.wikimedia.org">Developers</a></li>
+	<li id="footer-places-statslink"><a href="https://stats.wikimedia.org/#/en.wikipedia.org">Statistics</a></li>
+	<li id="footer-places-cookiestatement"><a href="https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Cookie_statement">Cookie statement</a></li>
+	<li id="footer-places-mobileview"><a href="//en.m.wikipedia.org/w/index.php?title=PBKDF2&amp;mobileaction=toggle_view_mobile" class="noprint stopMobileRedirectToggle">Mobile view</a></li>
+</ul>
+
+	<ul id="footer-icons" class="noprint">
+	<li id="footer-copyrightico"><a href="https://wikimediafoundation.org/"><img src="/static/images/footer/wikimedia-button.png" srcset="/static/images/footer/wikimedia-button-1.5x.png 1.5x, /static/images/footer/wikimedia-button-2x.png 2x" width="88" height="31" alt="Wikimedia Foundation" loading="lazy" /></a></li>
+	<li id="footer-poweredbyico"><a href="https://www.mediawiki.org/"><img src="/static/images/footer/poweredby_mediawiki_88x31.png" alt="Powered by MediaWiki" srcset="/static/images/footer/poweredby_mediawiki_132x47.png 1.5x, /static/images/footer/poweredby_mediawiki_176x62.png 2x" width="88" height="31" loading="lazy"></a></li>
+</ul>
+
+</footer>
+
+		</div>
+	</div> 
+</div> 
+<div class="vector-settings" id="p-dock-bottom">
+	<ul>
+		<li>
+		<button class="cdx-button cdx-button--icon-only vector-limited-width-toggle" id=""><span class="vector-icon mw-ui-icon-fullScreen mw-ui-icon-wikimedia-fullScreen"></span>
+
+<span>Toggle limited content width</span>
+</button>
+</li>
+	</ul>
+</div>
+<script>(RLQ=window.RLQ||[]).push(function(){mw.config.set({"wgHostname":"mw-web.codfw.main-6b6f4c49c-rpl7m","wgBackendResponseTime":126,"wgPageParseReport":{"limitreport":{"cputime":"0.337","walltime":"0.433","ppvisitednodes":{"value":3025,"limit":1000000},"postexpandincludesize":{"value":114601,"limit":2097152},"templateargumentsize":{"value":4239,"limit":2097152},"expansiondepth":{"value":16,"limit":100},"expensivefunctioncount":{"value":2,"limit":500},"unstrip-depth":{"value":1,"limit":20},"unstrip-size":{"value":69142,"limit":5000000},"entityaccesscount":{"value":0,"limit":400},"timingprofile":["100.00%  360.919      1 -total"," 48.55%  175.230      4 Template:Navbox"," 41.71%  150.551      1 Template:Reflist"," 23.81%   85.946      1 Template:Cryptography_navbox"," 23.71%   85.572      4 Template:Cite_journal"," 15.63%   56.414      1 Template:Short_description"," 11.10%   40.047      1 Template:Cryptography_hash","  9.62%   34.732      2 Template:Pagetype","  8.57%   30.941      9 Template:Cite_web","  7.25%   26.173     16 Template:Math"]},"scribunto":{"limitreport-timeusage":{"value":"0.186","limit":"10.000"},"limitreport-memusage":{"value":4891762,"limit":52428800}},"cachereport":{"origin":"mw-web.codfw.main-6b6f4c49c-n5wlz","timestamp":"20240405072942","ttl":2592000,"transientcontent":false}}});});</script>
+<script type="application/ld+json">{"@context":"https:\/\/schema.org","@type":"Article","name":"PBKDF2","url":"https:\/\/en.wikipedia.org\/wiki\/PBKDF2","sameAs":"http:\/\/www.wikidata.org\/entity\/Q3952834","mainEntity":"http:\/\/www.wikidata.org\/entity\/Q3952834","author":{"@type":"Organization","name":"Contributors to Wikimedia projects"},"publisher":{"@type":"Organization","name":"Wikimedia Foundation, Inc.","logo":{"@type":"ImageObject","url":"https:\/\/www.wikimedia.org\/static\/images\/wmf-hor-googpub.png"}},"datePublished":"2005-03-04T12:27:19Z","dateModified":"2024-02-24T09:19:23Z","headline":"standard for a password-based key derivation function"}</script>
+</body>
+</html>
