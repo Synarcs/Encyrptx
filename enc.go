@@ -112,6 +112,9 @@ func (enc *EncryptUtil) generateArgonMasterHash() {
 	masterKey := argon2.Key([]byte(password), salt, 3, 32*(1<<10), uint8(cpuCount), uint32(keySize))
 
 	enc.master_key = masterKey[:len(masterKey)/2]
+	if debug {
+		utils.DebugEncodedKey(enc.master_key)
+	}
 }
 
 func (enc *EncryptUtil) generateArgonEncHmacHashes() {
@@ -445,12 +448,15 @@ func (enc *EncryptUtil) writeEncyptedtoBinary(ciphertext []byte) {
 	}
 }
 
+
+
 func (enc *EncryptUtil) debugInputParamsMetadata(inputArgs *EncryptUtilInputArgs) {
 	fmt.Println("--- Util Version --- ", inputArgs.Version)
 	fmt.Println("--- Hashing Algorithm --- ", inputArgs.Hashing_algorithm)
 	fmt.Println("--- Encryption Algorithm --- ", inputArgs.Symmetric_encryption_algorithm)
 	fmt.Println("--- KDF Interation Count  --- ", inputArgs.Pbkdf2_iteration_count)
 	fmt.Println("--- Encrypted Output File Name  --- ", inputArgs.Encrypted_file_output_name)
+	fmt.Println("--- using Argon Mode for KDF ---", inputArgs.Argon_Hash_Mode)
 }
 
 // main driver to run the encryption util over the payload
@@ -470,7 +476,6 @@ func main() {
 		encrypt_util.generateMasterKey()
 		encrypt_util.deriveHmacEncKeys()
 	} else {
-		fmt.Println("using Argon Mode for KDF")
 		encrypt_util.generateArgonMasterHash()
 		encrypt_util.generateArgonEncHmacHashes()
 	}

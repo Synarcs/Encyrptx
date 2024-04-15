@@ -94,6 +94,9 @@ func (dec *DecryptUtil) deriveArgonMasterKey() {
 
 	masterKey = argon2.Key([]byte(password), salt, 3, 32*(1<<10), uint8(cpuCount), uint32(keyLength))
 	dec.master_key = masterKey[:len(masterKey)/2]
+	if debug {
+		utils.DebugEncodedKey(dec.master_key)
+	}
 }
 
 func (dec *DecryptUtil) deriveArgonEncHmacKeys() {
@@ -105,9 +108,9 @@ func (dec *DecryptUtil) deriveArgonEncHmacKeys() {
 	cpuCount := runtime.NumCPU()
 
 	keySize := dec.getKeySize()
-	hmac_key = argon2.Key(dec.hmac_key,
+	hmac_key = argon2.Key(dec.master_key,
 		saltString_hmac, 3, 3*(1<<10), uint8(cpuCount), uint32(keySize))
-	enc_key = argon2.Key(dec.encryption_key,
+	enc_key = argon2.Key(dec.master_key,
 		saltString_enc, 3, 3*(1<<10), uint8(cpuCount), uint32(keySize))
 
 	dec.hmac_key = hmac_key[:len(hmac_key)/2]
@@ -323,6 +326,7 @@ func (dec *DecryptUtil) debugInputParamsMetadata(metadata *utils.Metadata) {
 	fmt.Println("--- Hashing Algorithm --- ", metadata.Hashing_algorithm)
 	fmt.Println("--- Encryption Algorithm --- ", metadata.Symmetric_encryption_algorithm)
 	fmt.Println("--- KDF Interation Count  --- ", metadata.Pbkdf2_iteration_count)
+	fmt.Println("--- using Argon Mode for KDF ---", metadata.Argon_Hash_Mode)
 }
 
 func main() {
