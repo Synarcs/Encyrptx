@@ -65,6 +65,9 @@ func (dec *DecryptUtil) readBinary(encrpt_file_name string) {
 	defer ff.Close()
 	decoder := gob.NewDecoder(ff)
 	var binaryStruct utils.BinaryStruct
+	if debug {
+		fmt.Println(binaryStruct)
+	}
 	err = decoder.Decode(&binaryStruct)
 	fmt.Println(binaryStruct.Metadata)
 	if err != nil {
@@ -95,6 +98,8 @@ func (dec *DecryptUtil) deriveArgonMasterKey() {
 	masterKey = argon2.Key([]byte(password), salt, 3, 32*(1<<10), uint8(cpuCount), uint32(keyLength))
 	dec.master_key = masterKey[:len(masterKey)/2]
 	if debug {
+		fmt.Println("salt is ::")
+		utils.DebugEncodedKey(salt)
 		utils.DebugEncodedKey(dec.master_key)
 	}
 }
@@ -115,6 +120,12 @@ func (dec *DecryptUtil) deriveArgonEncHmacKeys() {
 
 	dec.hmac_key = hmac_key[:len(hmac_key)/2]
 	dec.encryption_key = enc_key[:len(enc_key)/2]
+
+	if debug {
+		fmt.Println("Hmac key")
+		utils.DebugEncodedKey(dec.hmac_key)
+		utils.DebugEncodedKey(dec.encryption_key)
+	}
 }
 
 func (dec *DecryptUtil) deriveMasterKey() {
@@ -190,7 +201,8 @@ func (dec *DecryptUtil) validateHmac() bool {
 	message_integrity_mac := hmac_hash.Sum(nil)
 
 	if debug {
-		fmt.Println(message_integrity_mac, dec.binaryBufferRead.Hmac)
+		utils.DebugEncodedKey(message_integrity_mac)
+		utils.DebugEncodedKey(dec.binaryBufferRead.Hmac)
 	}
 
 	return hmac.Equal(message_integrity_mac, dec.binaryBufferRead.Hmac)
@@ -223,27 +235,7 @@ func (dec *DecryptUtil) desDecrypt() {
 		panic(err)
 	}
 
-	if strings.Contains(dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "gcm") {
-		desGCM, error := cipher.NewGCM(block)
-		if error != nil {
-			panic(error)
-		}
-		if len(dec.binaryBufferRead.Ciphertext) < desGCM.NonceSize() {
-			panic("Error the Cipher Text Size is too small considering nounce ")
-		}
-
-		// slice the cipher block extracting the nonce and the cipher payload for the text
-		// with the unique crypto rand nonce considered for the use of nounce (1 << 2) * 3 size generations
-		nonce, ciphertext := dec.binaryBufferRead.Ciphertext[:desGCM.NonceSize()],
-			dec.binaryBufferRead.Ciphertext[desGCM.NonceSize():]
-		plaintext, err := desGCM.Open(nil, nonce, ciphertext, nil)
-		if err != nil {
-			panic(err.Error())
-		}
-
-		fmt.Println("Decrypting using DES GCM:: ")
-		fmt.Println(string(plaintext))
-	} else if strings.Contains(dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "cfb") {
+	if strings.Contains(dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "cfb") {
 		mode := cipher.NewCFBDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV)
 		plaintext := make([]byte, len(dec.binaryBufferRead.Ciphertext))
 		mode.XORKeyStream(plaintext, dec.binaryBufferRead.Ciphertext)
@@ -288,11 +280,20 @@ func (dec *DecryptUtil) aesDecrypt() {
 
 		// slice the cipher block extracting the nonce and the cipher payload for the text
 		// with the unique crypto rand nonce considered for the use of nounce (1 << 2) * 3 size generations
-		nonce, ciphertext := dec.binaryBufferRead.Ciphertext[:aesGcm.NonceSize()],
-			dec.binaryBufferRead.Ciphertext[aesGcm.NonceSize():]
+
+		nonce, ciphertext := dec.binaryBufferRead.Metadata.Encrypt_IV, // encrypt Iv is the nonce passed during encyrption
+			dec.binaryBufferRead.Ciphertext[:]
+
+		// Open decrypts and authenticates ciphertext, authenticates the
+		// additional data and, if successful, appends the resulting plaintext
+		// to dst,
+		// ideally the hmac with iv + ciphertext is not requeired to be validated
+		// since the gcm mode support hmac auth Tag and there is not requirement how cbc is doing to generate the hmac over (iv + ciphertext)
 		plaintext, err := aesGcm.Open(nil, nonce, ciphertext, nil)
+
 		if err != nil {
-			panic(err.Error())
+			mess := fmt.Sprintf("Aes GCM :: %s", err.Error())
+			panic(mess)
 		}
 
 		fmt.Println("Decrypting using AES GCM:: ")
@@ -347,7 +348,8 @@ func main() {
 		decryptUtil.deriveArgonEncHmacKeys()
 	}
 
-	if !decryptUtil.validateHmac() {
+	// gcm has its own authTag which can be used to validate it has nonce and no iv (although they can be used inter changebly) but the authTag can verify the integrity of the message
+	if !decryptUtil.validateHmac() && !strings.Contains(decryptUtil.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "gcm") {
 		err := "There is message tampering the Hmac coded did not match Error Integrity check broke..."
 		panic(err)
 	}

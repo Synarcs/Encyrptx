@@ -112,7 +112,10 @@ func (enc *EncryptUtil) generateArgonMasterHash() {
 	masterKey := argon2.Key([]byte(password), salt, 3, 32*(1<<10), uint8(cpuCount), uint32(keySize))
 
 	enc.master_key = masterKey[:len(masterKey)/2]
+	enc.masterKeySalt = salt
 	if debug {
+		fmt.Println("salt is ::")
+		utils.DebugEncodedKey(salt)
 		utils.DebugEncodedKey(enc.master_key)
 	}
 }
@@ -126,13 +129,19 @@ func (enc *EncryptUtil) generateArgonEncHmacHashes() {
 	cpuCount := runtime.NumCPU()
 
 	keySize := enc.getKeySize()
-	hmac_key = argon2.Key(enc.hmac_key,
+	hmac_key = argon2.Key(enc.master_key,
 		saltString_hmac, 3, 3*(1<<10), uint8(cpuCount), uint32(keySize))
-	enc_key = argon2.Key(enc.encryption_key,
+	enc_key = argon2.Key(enc.master_key,
 		saltString_enc, 3, 3*(1<<10), uint8(cpuCount), uint32(keySize))
 
 	enc.hmac_key = hmac_key[:len(hmac_key)/2]
 	enc.encryption_key = enc_key[:len(enc_key)/2]
+
+	if debug {
+		fmt.Println("Hmac key")
+		utils.DebugEncodedKey(enc.hmac_key)
+		utils.DebugEncodedKey(enc.encryption_key)
+	}
 }
 
 // derive the master key using pbkdf2 based the keysize found for underlying symmetric encryption alg
@@ -172,13 +181,14 @@ func (enc *EncryptUtil) deriveHmacEncKeys() {
 	saltString_hmac := []byte("hmac_fixed_str")
 	var hmac_key []byte
 	var enc_key []byte
+	keySize := enc.getKeySize()
 	switch enc.inputArgs.Hashing_algorithm {
 	case "sha256":
-		hmac_key = pbkdf2.Key(enc.master_key, saltString_hmac, 1, len(enc.master_key)*2, sha3.New256)
-		enc_key = pbkdf2.Key(enc.master_key, saltString_enc, 1, len(enc.master_key)*2, sha3.New256)
+		hmac_key = pbkdf2.Key(enc.master_key, saltString_hmac, 1, keySize, sha3.New256)
+		enc_key = pbkdf2.Key(enc.master_key, saltString_enc, 1, keySize, sha3.New256)
 	case "sha512":
-		hmac_key = pbkdf2.Key(enc.master_key, saltString_hmac, 1, len(enc.master_key)*2, sha3.New512)
-		enc_key = pbkdf2.Key(enc.master_key, saltString_enc, 1, len(enc.master_key)*2, sha3.New512)
+		hmac_key = pbkdf2.Key(enc.master_key, saltString_hmac, 1, keySize, sha3.New512)
+		enc_key = pbkdf2.Key(enc.master_key, saltString_enc, 1, keySize, sha3.New512)
 	default:
 		fmt.Errorf("Algorithm Not Supported")
 	}
@@ -312,14 +322,22 @@ func (enc *EncryptUtil) aesEncrypt() {
 		nonce := enc.genRandBytes(aesGcm.NonceSize())
 
 		if err != nil {
-			panic(err)
+			panic(err.Error())
 		}
-		cipherText := aesGcm.Seal(nonce, nonce, enc.readBuffer, nil)
+
+		// additional data, nonce, readBuffer, nill
+		// Seal encrypts and authenticates plaintext, authenticates the
+		// additional data and appends the result to dst, returning the updated
+		// slice. The nonce must be NonceSize() bytes long and unique for all
+		// time, for a given key.
+		cipherText := aesGcm.Seal(nil, nonce, enc.readBuffer, nil)
+
 		if debug && len(cipherText) < (1<<8) {
 			fmt.Println("AES: GCM Mode")
 			utils.DebugEncodedKey(cipherText)
 		}
 
+		enc.initialize_vector = nonce // treat nonce as IV for the GCM
 		enc.encryptedContent = cipherText
 	} else if strings.Contains(enc.inputArgs.Symmetric_encryption_algorithm, "cfb") {
 		var iv []byte = enc.genRandBytes(aes.BlockSize)
@@ -447,8 +465,6 @@ func (enc *EncryptUtil) writeEncyptedtoBinary(ciphertext []byte) {
 		panic("error file Permission Issue")
 	}
 }
-
-
 
 func (enc *EncryptUtil) debugInputParamsMetadata(inputArgs *EncryptUtilInputArgs) {
 	fmt.Println("--- Util Version --- ", inputArgs.Version)
