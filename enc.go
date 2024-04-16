@@ -63,7 +63,7 @@ type EncryptUtil struct {
 	initialize_vector []byte
 	masterKeySalt     []byte
 
-	// plain text conten
+	// buffer read from i/o file descriptor
 	readBuffer []byte
 }
 
@@ -88,21 +88,26 @@ func (conf *EncryptUtilInputArgs) readConfFile(fileName string) *EncryptUtilInpu
 // matching the collusiona and hash strength of underlying hashing alg, the keySize should match the size of underlying
 // symmetric encryption algorithm
 // from NIST guidelenes irrespective of hashing algorithm its secure to keep the salt size 16 bytes
-// if i create size same as the encryption key the has strength is n / 2 but better to keep it twice the zie and truncate in half
-// this ensures stronger hash strength equals the length of key but require the key to be truncated into half
+// if i create size same as the encryption key the has strength is n / 2 but better to keep it twice the size and truncate in half
+// this ensures stronger hash strength equals the length (stronger collusion resistance) of key but require the key to be truncated into half
 func (enc *EncryptUtil) getKeySize() int {
 	switch enc.inputArgs.Symmetric_encryption_algorithm {
 	case "des3-3k-cbc", "des3-3k-cfb":
 		return (192 / (1 << 3)) * 2 // (24 bytes (internal 3 keys of 8 bytes each))
 	case "aes-128-cbc", "aes-128-cfb", "aes-128-gcm":
-		return ((1 << 7) / (1 << 3)) * 2 // aes key size (bits) / 1 byte size (pbkdf2 go requires key in bytes) (16 bytes)
+		return ((1 << 7) / (1 << 3)) * 2 // (16 bytes key) * 2 [to ensure i get whole collusion resistance strength]
 	case "aes-256-cbc", "aes-256-cfb", "aes-256-gcm":
-		return ((1 << 8) / (1 << 3)) * 2 // (32 bytes)
+		return ((1 << 8) / (1 << 3)) * 2 // (32 bytes key) * 2 [to ensure i get whole collusion resistance strength]
 	default:
 		panic("Error the algorithm is not supported by Enc Util")
 	}
 }
 
+/*
+Experimental method I wrote to learn and explore more with argon (Argon2i) based
+time=3, and memory=32*1024
+Number of threads: Number of avaialaible CPU cores
+*/
 func (enc *EncryptUtil) generateArgonMasterHash() {
 	salt := enc.genRandBytes(aes.BlockSize)
 	password := utils.GetComplexPassword("encrypt")
@@ -120,9 +125,14 @@ func (enc *EncryptUtil) generateArgonMasterHash() {
 	}
 }
 
+/*
+Experimental method I wrote to learn and explore more with argon (Argon2i) based mem
+time=3, and memory=32*1024
+Number of threads: Number of avaialaible CPU cores
+*/
 func (enc *EncryptUtil) generateArgonEncHmacHashes() {
-	saltString_enc := []byte("encrption_fixed_str")
-	saltString_hmac := []byte("hmac_fixed_str")
+	saltString_enc := utils.SaltString_enc
+	saltString_hmac := utils.SaltString_hmac
 
 	var hmac_key []byte
 	var enc_key []byte
@@ -177,8 +187,8 @@ func (enc *EncryptUtil) generateMasterKey() {
 // derive the hmac and encryption key from the master key
 // the hmac and encryption key use a fixed salt
 func (enc *EncryptUtil) deriveHmacEncKeys() {
-	saltString_enc := []byte("encrption_fixed_str")
-	saltString_hmac := []byte("hmac_fixed_str")
+	saltString_enc := utils.SaltString_enc
+	saltString_hmac := utils.SaltString_hmac
 	var hmac_key []byte
 	var enc_key []byte
 	keySize := enc.getKeySize()
@@ -254,6 +264,8 @@ func (enc *EncryptUtil) desEncrypt() {
 		mode := cipher.NewCFBEncrypter(block, iv)
 		ciphertext := make([]byte, len(enc.readBuffer))
 
+		// run cfb mode (stream cipher conversion internally for cbc ) and write the output in ciphertext
+		// this mode does not requre padding referred from rfc
 		mode.XORKeyStream(ciphertext, enc.readBuffer)
 		if debug && len(ciphertext) < (1<<8) {
 			fmt.Println("DES: CFB Mode")
@@ -264,13 +276,17 @@ func (enc *EncryptUtil) desEncrypt() {
 		enc.encryptedContent = ciphertext
 	} else if strings.Contains(enc.inputArgs.Symmetric_encryption_algorithm, "cbc") {
 		// des follows pkcs5 based padding support
+		// the method i wrote for padding is adaptable for both pkcs5 and okcs7 since it consider
+		// cipher block size while performing any padding
 		sample_plain_raw_padding := PKCSPadding([]byte(enc.readBuffer), block)
 		iv := enc.genRandBytes(des.BlockSize)
+
 		// init the mode
 		cipher_encryptor := cipher.NewCBCEncrypter(block, iv)
 
 		ciphertext := make([]byte, len(sample_plain_raw_padding))
 
+		// run the cbc mode over the raw text and dump the output in the ciphertext
 		cipher_encryptor.CryptBlocks(ciphertext, sample_plain_raw_padding)
 
 		if debug && len(ciphertext) < (1<<8) {
@@ -282,7 +298,9 @@ func (enc *EncryptUtil) desEncrypt() {
 
 }
 
-// padding support to implement padding similar to pkcs7 standards
+// padding support to implement padding
+// this method is adaptable to support both pkcs5  and phekcs7
+// it is determined based on the block size for the cipher
 func PKCSPadding(ciphertext []byte, block cipher.Block) []byte {
 	if len(ciphertext)%block.BlockSize() == 0 {
 		return ciphertext
@@ -328,8 +346,8 @@ func (enc *EncryptUtil) aesEncrypt() {
 		// additional data, nonce, readBuffer, nill
 		// Seal encrypts and authenticates plaintext, authenticates the
 		// additional data and appends the result to dst, returning the updated
-		// slice. The nonce must be NonceSize() bytes long and unique for all
-		// time, for a given key.
+		// slice. The nonce for the  NonceSize() bytes long and unique for all for a key
+		// to prevent any leakage of the plaintext using crypto rand same as iv for generating nonce
 		cipherText := aesGcm.Seal(nil, nonce, enc.readBuffer, nil)
 
 		if debug && len(cipherText) < (1<<8) {

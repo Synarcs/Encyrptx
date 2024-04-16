@@ -9,6 +9,9 @@ import (
 	"golang.org/x/term"
 )
 
+var SaltString_enc []byte = []byte("encrption_fixed_str")
+var SaltString_hmac []byte = []byte("hmac_fixed_str")
+
 type Metadata struct {
 	Hashing_algorithm              string
 	Symmetric_encryption_algorithm string

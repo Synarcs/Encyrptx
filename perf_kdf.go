@@ -3,8 +3,10 @@ package main
 import (
 	"crypto/rand"
 	"fmt"
+	"runtime"
 	"time"
 
+	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/crypto/sha3"
 	"synarcs.com/css577/utils"
@@ -36,6 +38,20 @@ func generateKdfHash(iterCount int, password string, alg string) {
 	}
 }
 
+func generateArgonHash(iterCount int, password string) {
+	salt := make([]byte, (1 << 4))
+	_, err := rand.Read(salt)
+	if err != nil {
+		panic(err.Error())
+	}
+	var genHash []byte
+	cpuCount := runtime.NumCPU()
+	genHash = argon2.Key([]byte(password), salt, 3, 512*(1<<10), uint8(cpuCount), uint32(iterCount))
+	if debug_perf {
+		fmt.Println(genHash)
+	}
+}
+
 func main() {
 	// dont count the time for i/o
 	password := utils.GetComplexPassword("encrypt")
@@ -55,4 +71,10 @@ func main() {
 		endTIme := time.Now().UnixMicro()
 		fmt.Printf("KDF HASH time took for HASH Alg SHA512 with keySize %d and iteration Count %d is :: %d micro seconds\n", (1 << 9), (1 << i), (endTIme - startTime))
 	}
+
+	startTime = time.Now().UnixMicro()
+	generateArgonHash((1 << 8), password)
+
+	endTIme := time.Now().UnixMicro()
+	fmt.Printf("Argon KDF HASH time took with keySize %d and iteration Count %d is :: %d micro seconds\n", (1 << 9), (1 << 8), (endTIme - startTime))
 }

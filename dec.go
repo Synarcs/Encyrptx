@@ -56,7 +56,10 @@ func (dec *DecryptUtil) getKeySize() int {
 
 const debug bool = false
 
-// read the binary encrypted file
+/*
+	  read the binary encrypted file
+		The code expects the read binary to be of go binary
+*/
 func (dec *DecryptUtil) readBinary(encrpt_file_name string) {
 	ff, err := os.Open(encrpt_file_name)
 	if err != nil {
@@ -87,6 +90,12 @@ func (dec *DecryptUtil) genRandBytes(bytelength int) []byte {
 	return randBytes
 }
 
+/*
+Experimental method I wrote to learn and explore more with argon (Argon2i) based
+time=3, and memory=32*1024
+Number of threads: Number of avaialaible CPU cores
+Generate the master key back for decryption purpose
+*/
 func (dec *DecryptUtil) deriveArgonMasterKey() {
 	salt := dec.binaryBufferRead.Metadata.Hashing_Salt // keeping this same as aes block size considering the stength to be of (1 << 16)  bits
 	password := utils.GetComplexPassword("decrypt")
@@ -104,9 +113,15 @@ func (dec *DecryptUtil) deriveArgonMasterKey() {
 	}
 }
 
+/*
+Experimental method I wrote to learn and explore more with argon (Argon2i) based mem
+time=3, and memory=32*1024
+Number of threads: Number of avaialaible CPU cores
+Generate the hmac  key and encryption key back for decryption purpose
+*/
 func (dec *DecryptUtil) deriveArgonEncHmacKeys() {
-	saltString_enc := []byte("encrption_fixed_str")
-	saltString_hmac := []byte("hmac_fixed_str")
+	saltString_enc := utils.SaltString_enc
+	saltString_hmac := utils.SaltString_hmac
 
 	var hmac_key []byte
 	var enc_key []byte
@@ -128,6 +143,7 @@ func (dec *DecryptUtil) deriveArgonEncHmacKeys() {
 	}
 }
 
+// Generate the master key back for decryption purpose using pbkdf2
 func (dec *DecryptUtil) deriveMasterKey() {
 	salt := dec.binaryBufferRead.Metadata.Hashing_Salt // keeping this same as aes block size considering the stength to be of (1 << 16)  bits
 	password := utils.GetComplexPassword("decrypt")
@@ -157,9 +173,10 @@ func (dec *DecryptUtil) deriveMasterKey() {
 	dec.master_key = masterKey[:len(masterKey)/2]
 }
 
+// Generate the hmac  key and encryption key back for decryption purpose using pbkdf2
 func (dec *DecryptUtil) deriveHmacEncKeys() {
-	saltString_enc := []byte("encrption_fixed_str")
-	saltString_hmac := []byte("hmac_fixed_str")
+	saltString_enc := utils.SaltString_enc
+	saltString_hmac := utils.SaltString_hmac
 	var hmac_key []byte
 	var enc_key []byte
 	switch dec.binaryBufferRead.Metadata.Hashing_algorithm {
@@ -180,6 +197,7 @@ func (dec *DecryptUtil) deriveHmacEncKeys() {
 	dec.encryption_key = enc_key[:len(enc_key)/2]
 }
 
+// most important validate the hmac by first internally computing the hmac and comparing it with hmac found in the binary metadata
 func (dec *DecryptUtil) validateHmac() bool {
 
 	var hmac_hash hash.Hash
@@ -208,6 +226,7 @@ func (dec *DecryptUtil) validateHmac() bool {
 	return hmac.Equal(message_integrity_mac, dec.binaryBufferRead.Hmac)
 }
 
+// unpad padding in case of cbc
 func PKCSUnpad(data []byte) ([]byte, error) {
 	if len(data) == 0 {
 		return nil, fmt.Errorf("input data is empty")
@@ -228,6 +247,7 @@ func PKCSUnpad(data []byte) ([]byte, error) {
 }
 
 // decrypt the des cipher content using the derived encryption keys
+// same as mentioned in des encrypt des does not support gcm due to smaller block size 
 func (dec *DecryptUtil) desDecrypt() {
 	block, err := des.NewTripleDESCipher(dec.encryption_key)
 
@@ -236,6 +256,7 @@ func (dec *DecryptUtil) desDecrypt() {
 	}
 
 	if strings.Contains(dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "cfb") {
+		// cfb mode decryptor
 		mode := cipher.NewCFBDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV)
 		plaintext := make([]byte, len(dec.binaryBufferRead.Ciphertext))
 		mode.XORKeyStream(plaintext, dec.binaryBufferRead.Ciphertext)
@@ -244,6 +265,7 @@ func (dec *DecryptUtil) desDecrypt() {
 		fmt.Println(string(plaintext))
 
 	} else if strings.Contains(dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "cbc") {
+		// cbc mode decryptor
 		decrypt := cipher.NewCBCDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV)
 		plaintext := make([]byte, len(dec.binaryBufferRead.Ciphertext))
 
@@ -287,8 +309,9 @@ func (dec *DecryptUtil) aesDecrypt() {
 		// Open decrypts and authenticates ciphertext, authenticates the
 		// additional data and, if successful, appends the resulting plaintext
 		// to dst,
-		// ideally the hmac with iv + ciphertext is not requeired to be validated
-		// since the gcm mode support hmac auth Tag and there is not requirement how cbc is doing to generate the hmac over (iv + ciphertext)
+		// ideally the hmac with iv + ciphertext is not required  to be validated
+		// since the gcm mode support auth Tag (which serve purpose of hmac)
+		// and there is not requirement how cbc is doing to generate the hmac over (iv + ciphertext)
 		plaintext, err := aesGcm.Open(nil, nonce, ciphertext, nil)
 
 		if err != nil {
@@ -330,6 +353,7 @@ func (dec *DecryptUtil) debugInputParamsMetadata(metadata *utils.Metadata) {
 	fmt.Println("--- using Argon Mode for KDF ---", metadata.Argon_Hash_Mode)
 }
 
+// main runner for the code 
 func main() {
 	var decryptUtil *DecryptUtil = &DecryptUtil{}
 
