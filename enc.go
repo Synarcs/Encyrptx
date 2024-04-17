@@ -85,8 +85,8 @@ func (conf *EncryptUtilInputArgs) readConfFile(fileName string) *EncryptUtilInpu
 }
 
 // since it uses pbkdf2 with a fixed length for different hashing algoritgh
-// matching the collusiona and hash strength of underlying hashing alg, the keySize should match the size of underlying
-// symmetric encryption algorithm
+// matching the collusion and the hash strength of underlying encryption alg,
+// the keySize should match the size of underlying symmetric encryption algorithm
 // from NIST guidelenes irrespective of hashing algorithm its secure to keep the salt size 16 bytes
 // if i create size same as the encryption key the has strength is n / 2 but better to keep it twice the size and truncate in half
 // this ensures stronger hash strength equals the length (stronger collusion resistance) of key but require the key to be truncated into half
@@ -119,7 +119,7 @@ func (enc *EncryptUtil) generateArgonMasterHash() {
 	enc.master_key = masterKey[:len(masterKey)/2]
 	enc.masterKeySalt = salt
 	if debug {
-		fmt.Println("salt is ::")
+		fmt.Println("salt , masterkey ::")
 		utils.DebugEncodedKey(salt)
 		utils.DebugEncodedKey(enc.master_key)
 	}
@@ -148,7 +148,7 @@ func (enc *EncryptUtil) generateArgonEncHmacHashes() {
 	enc.encryption_key = enc_key[:len(enc_key)/2]
 
 	if debug {
-		fmt.Println("Hmac key")
+		fmt.Println("Hmac key , Encryption Key")
 		utils.DebugEncodedKey(enc.hmac_key)
 		utils.DebugEncodedKey(enc.encryption_key)
 	}
@@ -180,7 +180,7 @@ func (enc *EncryptUtil) generateMasterKey() {
 		utils.DebugEncodedKey(salt)
 		utils.DebugEncodedKey(masterKey)
 	}
-	enc.master_key = masterKey[:len(masterKey)/2]
+	enc.master_key = masterKey[:len(masterKey)/2] // truncate the key to half to support the underlying encryption algorithm
 	enc.masterKeySalt = salt
 }
 
@@ -211,6 +211,7 @@ func (enc *EncryptUtil) deriveHmacEncKeys() {
 }
 
 // Used the crypto rand as agains math/rand which uses psuedo random number causing more collusion in the generated random output
+// uses this to fill the rand buffer
 func (enc *EncryptUtil) genRandBytes(bytelength int) []byte {
 	randBytes := make([]byte, bytelength)
 	_, err := rand.Read(randBytes)
@@ -299,7 +300,7 @@ func (enc *EncryptUtil) desEncrypt() {
 }
 
 // padding support to implement padding
-// this method is adaptable to support both pkcs5  and phekcs7
+// this method is adaptable to support both pkcs5  and pkcs7
 // it is determined based on the block size for the cipher
 func PKCSPadding(ciphertext []byte, block cipher.Block) []byte {
 	if len(ciphertext)%block.BlockSize() == 0 {
@@ -418,7 +419,7 @@ func (enc *EncryptUtil) generateHmacOverEncryption() {
 	message_integrity_mac := hmac_hash.Sum(nil)
 	enc.hmac_integrity_code = message_integrity_mac
 
-	if debug {
+	if !debug {
 		fmt.Println("Hmac code is : Hashed using ", enc.inputArgs.Hashing_algorithm)
 		utils.DebugEncodedKey(message_integrity_mac)
 	}

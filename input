@@ -1,1 +1,6 @@
-complex password test
+If multiple cryptographic processors are in use by the sender, then
+the sender MUST ensure that, for a particular key, each value of the
+nonce_explicit used with that key is distinct.  In this case, each
+encryption processor SHOULD include, in the nonce_explicit, a fixed
+value that is distinct for each processor.  The recommended format is
+nonce_explicit = FixedDistinct || Variable

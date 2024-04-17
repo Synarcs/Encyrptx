@@ -228,26 +228,31 @@ func (dec *DecryptUtil) validateHmac() bool {
 
 // unpad padding in case of cbc
 func PKCSUnpad(data []byte) ([]byte, error) {
+	// check the length for the data bytes
 	if len(data) == 0 {
 		return nil, fmt.Errorf("input data is empty")
 	}
+	// find the required length padding to be added.
 	padding := int(data[len(data)-1])
 
+	// validate the padding to be added in the block
 	if padding == 0 || padding > len(data) {
 		return nil, fmt.Errorf("invalid padding")
 	}
 
+	// verify the padding bytes
 	for i := len(data) - padding; i < len(data); i++ {
 		if data[i] != byte(padding) {
 			return nil, fmt.Errorf("invalid padding bytes")
 		}
 	}
 
+	// return the plaintext after removing the padding
 	return data[:len(data)-padding], nil
 }
 
 // decrypt the des cipher content using the derived encryption keys
-// same as mentioned in des encrypt des does not support gcm due to smaller block size 
+// same as mentioned in des encrypt des does not support gcm due to smaller block size
 func (dec *DecryptUtil) desDecrypt() {
 	block, err := des.NewTripleDESCipher(dec.encryption_key)
 
@@ -353,7 +358,7 @@ func (dec *DecryptUtil) debugInputParamsMetadata(metadata *utils.Metadata) {
 	fmt.Println("--- using Argon Mode for KDF ---", metadata.Argon_Hash_Mode)
 }
 
-// main runner for the code 
+// main runner for the code
 func main() {
 	var decryptUtil *DecryptUtil = &DecryptUtil{}
 

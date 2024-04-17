@@ -57,7 +57,7 @@ func main() {
 	password := utils.GetComplexPassword("encrypt")
 
 	startTime := time.Now().UnixMicro()
-	for i := 0; (1 << i) < (1 << 16); i++ {
+	for i := 0; (1 << i) < (1 << 20); i++ {
 		generateKdfHash((1 << i), password, "sha256")
 
 		endTIme := time.Now().UnixMicro()
@@ -73,8 +73,8 @@ func main() {
 	}
 
 	startTime = time.Now().UnixMicro()
-	generateArgonHash((1 << 8), password)
+	generateArgonHash((1 << 20), password)
 
 	endTIme := time.Now().UnixMicro()
-	fmt.Printf("Argon KDF HASH time took with keySize %d and iteration Count %d is :: %d micro seconds\n", (1 << 9), (1 << 8), (endTIme - startTime))
+	fmt.Printf("Argon KDF HASH time took with keySize %d bits and iteration Count %d is :: %d micro seconds\n", (1 << 9), (1 << 20), (endTIme - startTime))
 }
