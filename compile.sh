@@ -11,5 +11,3 @@ echo "[x] Compiling the Decryption utility"
 go build -o dec dec.go 
 
 
-
-

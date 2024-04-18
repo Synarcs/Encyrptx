@@ -7,12 +7,14 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"hash"
 	"os"
 	"runtime"
 	"strings"
 
+	"github.com/mergermarket/go-pkcs7"
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/crypto/sha3"
@@ -32,9 +34,9 @@ type DecryptUtil struct {
 	hmac_integrity_code []byte
 
 	// synmmetric cipher chaining mode
-	block_cipher_mode   string // different block modes aes-cbc, aes-cfb,
-	aesdecryptedContnet []byte
-	iv                  []byte
+	block_cipher_mode string // different block modes aes-cbc, aes-cfb,
+	decryptedContnet  []byte
+	iv                []byte
 }
 
 // since it uses pbkdf2 with a fixed length for different hashing algoritgh
@@ -55,10 +57,11 @@ func (dec *DecryptUtil) getKeySize() int {
 }
 
 const debug bool = false
+const stdout bool = false
 
 /*
-	  read the binary encrypted file
-		The code expects the read binary to be of go binary
+read the binary encrypted file
+The code expects the read binary to be of go binary serialized
 */
 func (dec *DecryptUtil) readBinary(encrpt_file_name string) {
 	ff, err := os.Open(encrpt_file_name)
@@ -226,35 +229,10 @@ func (dec *DecryptUtil) validateHmac() bool {
 	return hmac.Equal(message_integrity_mac, dec.binaryBufferRead.Hmac)
 }
 
-// unpad padding in case of cbc
-func PKCSUnpad(data []byte) ([]byte, error) {
-	// check the length for the data bytes
-	if len(data) == 0 {
-		return nil, fmt.Errorf("input data is empty")
-	}
-	// find the required length padding to be added.
-	padding := int(data[len(data)-1])
-
-	// validate the padding to be added in the block
-	if padding == 0 || padding > len(data) {
-		return nil, fmt.Errorf("invalid padding")
-	}
-
-	// verify the padding bytes
-	for i := len(data) - padding; i < len(data); i++ {
-		if data[i] != byte(padding) {
-			return nil, fmt.Errorf("invalid padding bytes")
-		}
-	}
-
-	// return the plaintext after removing the padding
-	return data[:len(data)-padding], nil
-}
-
 // decrypt the des cipher content using the derived encryption keys
 // same as mentioned in des encrypt des does not support gcm due to smaller block size
 func (dec *DecryptUtil) desDecrypt() {
-	block, err := des.NewTripleDESCipher(dec.encryption_key)
+	block, err := des.NewTripleDESCipher(dec.encryption_key) // init the main 3des decryptor mode
 
 	if err != nil {
 		panic(err)
@@ -262,26 +240,35 @@ func (dec *DecryptUtil) desDecrypt() {
 
 	if strings.Contains(dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "cfb") {
 		// cfb mode decryptor
-		mode := cipher.NewCFBDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV)
+		mode := cipher.NewCFBDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV) // init the CFB block chain mode
 		plaintext := make([]byte, len(dec.binaryBufferRead.Ciphertext))
+		// XORs each byte in the given plaintext with a byte from the ciphertext, write back the results into the plaintext
 		mode.XORKeyStream(plaintext, dec.binaryBufferRead.Ciphertext)
 
 		fmt.Println("Decrypting using DES CFB:: ")
-		fmt.Println(string(plaintext))
+		dec.decryptedContnet = plaintext
+		if stdout {
+			fmt.Println(string(plaintext))
+		}
 
 	} else if strings.Contains(dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "cbc") {
 		// cbc mode decryptor
 		decrypt := cipher.NewCBCDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV)
 		plaintext := make([]byte, len(dec.binaryBufferRead.Ciphertext))
 
+		// Decrypt using CBC mode for each blocks the first block require IV and further follow standard decryption as done in CBC
+		// the output is written in plaintext
 		decrypt.CryptBlocks(plaintext, dec.binaryBufferRead.Ciphertext)
-		// buffer, err := pkcs7Unpad(plaintext)
+		plaintext, err := pkcs7.Unpad(plaintext, block.BlockSize())
 		if err != nil {
-			panic(err)
+			panic(err.Error())
 		}
 
 		fmt.Println("Decrypting using DES CBC:: ")
-		fmt.Println(string(plaintext))
+		dec.decryptedContnet = plaintext
+		if stdout {
+			fmt.Println(string(plaintext))
+		}
 	}
 }
 
@@ -291,13 +278,13 @@ func (dec *DecryptUtil) aesDecrypt() {
 		panic("Error the encrypted content is too small for aes to decrypt")
 	}
 
-	block, err := aes.NewCipher(dec.encryption_key)
+	block, err := aes.NewCipher(dec.encryption_key) // init the main aes cipher encyrption algorithm
 	if err != nil {
 		panic(err)
 	}
 
 	if strings.Contains(dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "gcm") {
-		aesGcm, error := cipher.NewGCM(block)
+		aesGcm, error := cipher.NewGCM(block) // init the GCM block mode chaining
 		if error != nil {
 			panic(error)
 		}
@@ -317,6 +304,7 @@ func (dec *DecryptUtil) aesDecrypt() {
 		// ideally the hmac with iv + ciphertext is not required  to be validated
 		// since the gcm mode support auth Tag (which serve purpose of hmac)
 		// and there is not requirement how cbc is doing to generate the hmac over (iv + ciphertext)
+		// hmac is required for cbc because of its drawback to not provide explicit authentication or integrity to prevent tampering of message
 		plaintext, err := aesGcm.Open(nil, nonce, ciphertext, nil)
 
 		if err != nil {
@@ -325,29 +313,67 @@ func (dec *DecryptUtil) aesDecrypt() {
 		}
 
 		fmt.Println("Decrypting using AES GCM:: ")
-		fmt.Println(string(plaintext))
+		dec.decryptedContnet = plaintext
+		if stdout {
+			fmt.Println(string(plaintext))
+		}
 	} else if strings.Contains(dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "cfb") {
-		mode := cipher.NewCFBDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV)
+		mode := cipher.NewCFBDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV) // init the CFB block mode chaining
 		plaintext := make([]byte, len(dec.binaryBufferRead.Ciphertext))
+		// XORs each byte in the given plaintext with a byte from the ciphertext, write back the results into the plaintext
 		mode.XORKeyStream(plaintext, dec.binaryBufferRead.Ciphertext)
 
 		fmt.Println("Decrypting using AES CFB:: ")
-		fmt.Println(string(plaintext))
+		dec.decryptedContnet = plaintext
+		if stdout {
+			fmt.Println(string(plaintext))
+		}
 
 	} else if strings.Contains(dec.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "cbc") {
-		// iv := dec.genRandBytes(aes.BlockSize)
-		mode := cipher.NewCBCDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV) // gcm has the base main mode for nounce
+		mode := cipher.NewCBCDecrypter(block, dec.binaryBufferRead.Metadata.Encrypt_IV) // init the CBC block mode chaining
 		plaintext := make([]byte, len(dec.binaryBufferRead.Ciphertext))
 
+		// Decrypt using CBC mode for each blocks the first block require IV and further follow standard decryption as done in CBC
+		// the output is written in plaintext
 		mode.CryptBlocks(plaintext, dec.binaryBufferRead.Ciphertext)
 
-		buffer, err := PKCSUnpad(plaintext)
+		// remove padding
+		plaintext, err := pkcs7.Unpad(plaintext, block.BlockSize()) // remove padding using pkcs7 standards
 		if err != nil {
 			panic(err.Error())
 		}
 
 		fmt.Println("Decrypting using AES CBC:: ")
-		fmt.Println(string(buffer))
+		dec.decryptedContnet = plaintext
+		if stdout {
+			fmt.Println(string(plaintext))
+		}
+	}
+}
+
+func (dec *DecryptUtil) writeDecryptedText(encrpt_file_name string) {
+	decryptHandler := func(outputDecryptedFile string) {
+		file, err := os.Create(outputDecryptedFile)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		defer file.Close()
+		bytesWritten, err := file.Write([]byte(dec.decryptedContnet))
+		if err != nil {
+			panic(err.Error())
+		}
+		fmt.Printf("Decrypted Content Wrote n bytes %d", bytesWritten)
+	}
+	outputDecryptedFile := strings.Replace(encrpt_file_name, "enc", "dec", 3)
+	fmt.Println(encrpt_file_name, outputDecryptedFile)
+	if _, err := os.Stat(outputDecryptedFile); err == nil {
+		os.Remove(outputDecryptedFile)
+		decryptHandler(outputDecryptedFile)
+	} else if errors.Is(err, os.ErrNotExist) {
+		decryptHandler(outputDecryptedFile)
+	} else {
+		panic(err.Error())
 	}
 }
 
@@ -388,6 +414,8 @@ func main() {
 	} else {
 		decryptUtil.desDecrypt()
 	}
+
+	decryptUtil.writeDecryptedText(encrpt_file_name)
 
 	fmt.Printf("\n ////////  Decryption Completed //////")
 }

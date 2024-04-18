@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/des"
@@ -17,6 +16,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/mergermarket/go-pkcs7"
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/crypto/sha3"
@@ -187,6 +187,7 @@ func (enc *EncryptUtil) generateMasterKey() {
 // derive the hmac and encryption key from the master key
 // the hmac and encryption key use a fixed salt
 func (enc *EncryptUtil) deriveHmacEncKeys() {
+	// fixed string of salt for this 
 	saltString_enc := utils.SaltString_enc
 	saltString_hmac := utils.SaltString_hmac
 	var hmac_key []byte
@@ -206,8 +207,8 @@ func (enc *EncryptUtil) deriveHmacEncKeys() {
 		utils.DebugEncodedKey(hmac_key)
 		utils.DebugEncodedKey(enc_key)
 	}
-	enc.hmac_key = hmac_key[:len(hmac_key)/2]
-	enc.encryption_key = enc_key[:len(enc_key)/2]
+	enc.hmac_key = hmac_key[:len(hmac_key)/2]     // truncate the key to half to support the underlying encryption algorithm
+	enc.encryption_key = enc_key[:len(enc_key)/2] // truncate the key to half to support the underlying encryption algorithm
 }
 
 // Used the crypto rand as agains math/rand which uses psuedo random number causing more collusion in the generated random output
@@ -241,7 +242,7 @@ func (enc *EncryptUtil) readFileBufffer(fileName string) {
 	enc.readBuffer = readBuffer
 }
 
-// des will use pkcs5 padding and only maling it work first des for cbc mode
+// des encryption
 func (enc *EncryptUtil) desEncrypt() {
 	input_file_name := enc.inputArgs.Plain_text_file_name
 
@@ -276,10 +277,11 @@ func (enc *EncryptUtil) desEncrypt() {
 		enc.initialize_vector = iv
 		enc.encryptedContent = ciphertext
 	} else if strings.Contains(enc.inputArgs.Symmetric_encryption_algorithm, "cbc") {
-		// des follows pkcs5 based padding support
-		// the method i wrote for padding is adaptable for both pkcs5 and okcs7 since it consider
-		// cipher block size while performing any padding
-		sample_plain_raw_padding := PKCSPadding([]byte(enc.readBuffer), block)
+		// add padding to the plain text following pkcs7 standards (rfc2315)
+		sample_plain_raw_padding, err := pkcs7.Pad([]byte(enc.readBuffer), block.BlockSize())
+		if err != nil {
+			panic(err.Error())
+		}
 		iv := enc.genRandBytes(des.BlockSize)
 
 		// init the mode
@@ -297,21 +299,6 @@ func (enc *EncryptUtil) desEncrypt() {
 		enc.encryptedContent = ciphertext
 	}
 
-}
-
-// padding support to implement padding
-// this method is adaptable to support both pkcs5  and pkcs7
-// it is determined based on the block size for the cipher
-func PKCSPadding(ciphertext []byte, block cipher.Block) []byte {
-	if len(ciphertext)%block.BlockSize() == 0 {
-		return ciphertext
-	}
-	// no. of padding bytes which are required
-	padding := block.BlockSize() - len(ciphertext)%block.BlockSize()
-
-	// Create a byte slice with the padding value repeated 'padding' times
-	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
-	return append(ciphertext, padtext...) // append this to the ciphertext
 }
 
 // this can also cover aes different block chaining modes
@@ -377,8 +364,11 @@ func (enc *EncryptUtil) aesEncrypt() {
 		var iv []byte = enc.genRandBytes(aes.BlockSize)
 		cbc := cipher.NewCBCEncrypter(block, iv)
 		var sample_plain_padding []byte
-		sample_plain_padding = PKCSPadding(enc.readBuffer, block)
+		sample_plain_padding, err = pkcs7.Pad(enc.readBuffer, block.BlockSize())
 
+		if err != nil {
+			panic(err.Error())
+		}
 		// fmt.Println("The padded text is ", sample_plain_padding)
 		// the input to the aes is done via (iv size) + (len(pkcs7 padded plain text the block aes cipher in CBC mode))
 		ciphertext := make([]byte, len(sample_plain_padding))
