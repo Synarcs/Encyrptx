@@ -41,6 +41,7 @@ type EncryptUtilInputArgs struct {
 	Argon_Hash_Mode            bool   `yaml:"argon_hash_mode"`
 }
 
+type IEncryptUtil interface{}
 /*
 Encrypt tool util struct
 */
@@ -65,6 +66,9 @@ type EncryptUtil struct {
 
 	// buffer read from i/o file descriptor
 	readBuffer []byte
+}
+
+type EncryptUtilInterface interface {
 }
 
 const debug bool = false
@@ -101,6 +105,10 @@ func (enc *EncryptUtil) getKeySize() int {
 	default:
 		panic("Error the algorithm is not supported by Enc Util")
 	}
+}
+
+func (enc *EncryptUtil) bufferLoader() []byte {
+	return make([]byte, (1 << 10))
 }
 
 /*
@@ -187,7 +195,7 @@ func (enc *EncryptUtil) generateMasterKey() {
 // derive the hmac and encryption key from the master key
 // the hmac and encryption key use a fixed salt
 func (enc *EncryptUtil) deriveHmacEncKeys() {
-	// fixed string of salt for this 
+	// fixed string of salt for this
 	saltString_enc := utils.SaltString_enc
 	saltString_hmac := utils.SaltString_hmac
 	var hmac_key []byte

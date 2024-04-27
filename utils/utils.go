@@ -31,8 +31,7 @@ type BinaryStruct struct {
 	CiphertextSize int
 }
 
-type EncryptUtilInterface interface {
-}
+
 
 func DebugEncodedKey(key []byte) {
 	fmt.Println(hex.EncodeToString(key))

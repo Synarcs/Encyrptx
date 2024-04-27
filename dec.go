@@ -21,6 +21,22 @@ import (
 	"synarcs.com/css577/utils"
 )
 
+type IDecryptUtil interface {
+	getKeySize() int
+	readBinary(encrpt_file_name string)
+	genRandBytes(bytelength int) []byte
+	deriveArgonMasterKey()
+	deriveArgonEncHmacKeys()
+	deriveMasterKey()
+	deriveHmacEncKeys()
+	validateHmac() bool
+	desDecrypt()
+	aesDecrypt()
+	writeDecryptedText(encrpt_file_name string)
+	debugInputParamsMetadata(metadata *utils.Metadata)
+	getbinaryBufferRead() utils.BinaryStruct
+}
+
 // the main util used to hold info for the decrypt tool
 type DecryptUtil struct {
 	binaryBufferRead utils.BinaryStruct
@@ -56,8 +72,14 @@ func (dec *DecryptUtil) getKeySize() int {
 	}
 }
 
-const debug bool = false
-const stdout bool = false
+const (
+	debug  bool = false
+	stdout bool = false
+)
+
+func (dec *DecryptUtil) getbinaryBufferRead() utils.BinaryStruct {
+	return dec.binaryBufferRead
+}
 
 /*
 read the binary encrypted file
@@ -386,15 +408,17 @@ func (dec *DecryptUtil) debugInputParamsMetadata(metadata *utils.Metadata) {
 
 // main runner for the code
 func main() {
-	var decryptUtil *DecryptUtil = &DecryptUtil{}
+
+	var decryptUtil IDecryptUtil = &DecryptUtil{}
 
 	fmt.Println("//////// Decryption Tool Started //////// ")
 	encrpt_file_name := utils.GetInputFileName("decrypt")
 
+	binaryBufferRead := decryptUtil.getbinaryBufferRead()
 	decryptUtil.readBinary(encrpt_file_name)
-	decryptUtil.debugInputParamsMetadata(&decryptUtil.binaryBufferRead.Metadata)
+	decryptUtil.debugInputParamsMetadata(&binaryBufferRead.Metadata)
 
-	if !decryptUtil.binaryBufferRead.Metadata.Argon_Hash_Mode {
+	if !binaryBufferRead.Metadata.Argon_Hash_Mode {
 		decryptUtil.deriveMasterKey()
 		decryptUtil.deriveHmacEncKeys()
 	} else {
@@ -404,12 +428,12 @@ func main() {
 	}
 
 	// gcm has its own authTag which can be used to validate it has nonce and no iv (although they can be used inter changebly) but the authTag can verify the integrity of the message
-	if !decryptUtil.validateHmac() && !strings.Contains(decryptUtil.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "gcm") {
+	if !decryptUtil.validateHmac() && !strings.Contains(binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "gcm") {
 		err := "There is message tampering the Hmac coded did not match Error Integrity check broke..."
 		panic(err)
 	}
 
-	if strings.HasPrefix(decryptUtil.binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "aes") {
+	if strings.HasPrefix(binaryBufferRead.Metadata.Symmetric_encryption_algorithm, "aes") {
 		decryptUtil.aesDecrypt()
 	} else {
 		decryptUtil.desDecrypt()
