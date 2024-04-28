@@ -41,7 +41,25 @@ type EncryptUtilInputArgs struct {
 	Argon_Hash_Mode            bool   `yaml:"argon_hash_mode"`
 }
 
-type IEncryptUtil interface{}
+type IEncryptUtil interface {
+	getKeySize() int
+	bufferLoader() []byte
+	generateArgonMasterHash()
+	generateArgonEncHmacHashes()
+	generateMasterKey()
+	deriveHmacEncKeys()
+	genRandBytes(bytelength int) []byte
+	readFileBufffer(fileName string)
+	desEncrypt()
+	aesEncrypt()
+	generateHmacOverEncryption()
+	writeEncyptedtoBinary(ciphertext []byte)
+	debugInputParamsMetadata(inputArgs *EncryptUtilInputArgs)
+	getInputArgs() *EncryptUtilInputArgs
+	setInputArgs(inputArgs *EncryptUtilInputArgs, fileName string)
+	getEncryptedContent() []byte
+}
+
 /*
 Encrypt tool util struct
 */
@@ -492,9 +510,20 @@ func (enc *EncryptUtil) debugInputParamsMetadata(inputArgs *EncryptUtilInputArgs
 	fmt.Println("--- using Argon Mode for KDF ---", inputArgs.Argon_Hash_Mode)
 }
 
+func (enc *EncryptUtil) getInputArgs() *EncryptUtilInputArgs {
+	return enc.inputArgs
+}
+
+func (enc *EncryptUtil) setInputArgs(inputArgs *EncryptUtilInputArgs, fileName string) {
+	enc.inputArgs = inputArgs
+	enc.inputArgs.Plain_text_file_name = fileName
+}
+
+func (enc *EncryptUtil) getEncryptedContent() []byte { return enc.encryptedContent }
+
 // main driver to run the encryption util over the payload
 func main() {
-	var encrypt_util *EncryptUtil = &EncryptUtil{}
+	var encrypt_util IEncryptUtil = &EncryptUtil{}
 	var encrypt_util_input *EncryptUtilInputArgs = &EncryptUtilInputArgs{}
 
 	fmt.Println("//////// Encryption Tool Started //////// ")
@@ -502,10 +531,11 @@ func main() {
 
 	encrypt_util_input = encrypt_util_input.readConfFile(fileName)
 	encrypt_util.debugInputParamsMetadata(encrypt_util_input)
-	encrypt_util.inputArgs = encrypt_util_input
-	encrypt_util.inputArgs.Plain_text_file_name = fileName
+	encrypt_util.setInputArgs(encrypt_util_input, fileName)
 
-	if !encrypt_util.inputArgs.Argon_Hash_Mode {
+	inputArgs := encrypt_util.getInputArgs()
+
+	if !inputArgs.Argon_Hash_Mode {
 		encrypt_util.generateMasterKey()
 		encrypt_util.deriveHmacEncKeys()
 	} else {
@@ -513,13 +543,13 @@ func main() {
 		encrypt_util.generateArgonEncHmacHashes()
 	}
 
-	if strings.HasPrefix(encrypt_util.inputArgs.Symmetric_encryption_algorithm, "aes") {
+	if strings.HasPrefix(inputArgs.Symmetric_encryption_algorithm, "aes") {
 		encrypt_util.aesEncrypt()
 	} else {
 		encrypt_util.desEncrypt()
 	}
 
 	encrypt_util.generateHmacOverEncryption()
-	encrypt_util.writeEncyptedtoBinary(encrypt_util.encryptedContent)
+	encrypt_util.writeEncyptedtoBinary(encrypt_util.getEncryptedContent())
 	fmt.Printf("\n ////////  Encryption Completed Encrypted file stored in %s /////", encrypt_util_input.Encrypted_file_output_name)
 }
