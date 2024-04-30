@@ -414,8 +414,8 @@ func main() {
 	fmt.Println("//////// Decryption Tool Started //////// ")
 	encrpt_file_name := utils.GetInputFileName("decrypt")
 
-	binaryBufferRead := decryptUtil.getbinaryBufferRead()
 	decryptUtil.readBinary(encrpt_file_name)
+	binaryBufferRead := decryptUtil.getbinaryBufferRead()
 	decryptUtil.debugInputParamsMetadata(&binaryBufferRead.Metadata)
 
 	if !binaryBufferRead.Metadata.Argon_Hash_Mode {

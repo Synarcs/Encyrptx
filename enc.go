@@ -15,6 +15,8 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/mergermarket/go-pkcs7"
 	"golang.org/x/crypto/argon2"
@@ -87,6 +89,34 @@ type EncryptUtil struct {
 }
 
 type EncryptUtilInterface interface {
+}
+
+type Locker struct {
+	mux *sync.Mutex
+}
+
+func test() {
+	var buff map[string]chan int
+	var sleeper sync.WaitGroup
+	for i := 0; i <= 20; i++ {
+		buff[string(i)] = make(chan int)
+	}
+	for i := 0; i <= 20; i++ {
+		sleeper.Add(1)
+		go func(id int) {
+			defer sleeper.Done()
+			buff[string(id)] <- 1 << i
+		}(i)
+		time.Sleep(time.Microsecond * 2000)
+	}
+
+	go func() {
+		for xx, _ := range buff {
+			var maker int = <-buff[xx]
+			fmt.Println(maker)
+		}
+	}()
+	sleeper.Wait()
 }
 
 const debug bool = false
